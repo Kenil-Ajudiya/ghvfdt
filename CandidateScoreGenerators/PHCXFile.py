@@ -94,9 +94,9 @@ class PHCX(CandidateFileInterface):
             
             # If candidate file is invalid in some way...
             if(self.isValid()==False):
-                
-                print "Invalid PHCX candidate: ",self.cand
-                
+
+                print("Invalid PHCX candidate: ",self.cand)
+
                 # Return only NaN values for scores.
                 for n in range(0, self.numberOfScores):  # @UnusedVariable - this comment tells my IDE to ignore n being unused.
                     self.scores.append(float("nan"))
@@ -104,7 +104,7 @@ class PHCX(CandidateFileInterface):
             
             # Candidate file is valid.
             else:
-                print "Candidate file valid."
+                print("Candidate file valid.")
                 # Extracts data from this part of a candidate file. It contains details
                 # of the profile in hexadecimal format. The data is extracted from the part
                 # of the candidate file which resembles:
@@ -163,7 +163,7 @@ class PHCX(CandidateFileInterface):
                     if points[index] =="\t":# There is a tab at the end of the xml data. So break the loop normally here.
                         break
                     else: # Unexpected error, report to user. 
-                        print "Unexpected value error obtaining profile data for: ",self.cand
+                        print("Unexpected value error obtaining profile data for: ",self.cand)
                         break
             else:
                 index = index+1
@@ -236,8 +236,8 @@ class PHCX(CandidateFileInterface):
             if (bestWidth != "nan") & (bestSNR != "nan") & (bestDM != "nan") & (bestBaryPeriod != "nan"):
                 return True
             else:
-                print "\tPHCX check 4 failed, NaN's present in: ",self.cand
-                        
+                print("\tPHCX check 4 failed, NaN's present in: ",self.cand)
+
                         # Extra debugging info for anybody encountering errors.
             #if (bestWidth != "nan") :
              #   self.out("\t\"Width\" value found in <Section name='FFT-pdmpd'>...</> is NaN in: ",self.cand)
@@ -329,8 +329,8 @@ class PHCX(CandidateFileInterface):
             return stats
         
         except Exception as e: # catch *all* exceptions
-            print "Error getting Profile stat scores from PHCX file\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error getting Profile stat scores from PHCX file\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Profile stat score extraction exception")
             return []
     
@@ -359,8 +359,8 @@ class PHCX(CandidateFileInterface):
             return stats  
         
         except Exception as e: # catch *all* exceptions
-            print "Error getting DM curve stat scores from PHCX file\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error getting DM curve stat scores from PHCX file\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("DM curve stat score extraction exception")
             return []
      
@@ -445,14 +445,14 @@ class PHCX(CandidateFileInterface):
             self.scores.append(float(sin_fit[3])) # Score 4.  Sum over residuals.
             
             if(self.debug==True):
-                print "\nScore 1. Chi-Squared value for sine fit to raw profile = ",sin_fit[0]
-                print "Score 2. Chi-Squared value for sine-squared fit to amended profile = ",sin_fit[1]
-                print "Score 3. Difference between maxima = ",sin_fit[2]
-                print "Score 4. Sum over residuals = ",sin_fit[3]
-        
+                print("\nScore 1. Chi-Squared value for sine fit to raw profile = ",sin_fit[0])
+                print("Score 2. Chi-Squared value for sine-squared fit to amended profile = ",sin_fit[1])
+                print("Score 3. Difference between maxima = ",sin_fit[2])
+                print("Score 4. Sum over residuals = ",sin_fit[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing scores 1-4 (Sinusoid Fitting) \n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing scores 1-4 (Sinusoid Fitting) \n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Sinusoid fitting exception")
             
     
@@ -515,17 +515,17 @@ class PHCX(CandidateFileInterface):
             self.scores.append(float(guassian_fit[6]))# Score 11. Chi squared value from double Gaussian fit to pulse profile.
             
             if(self.debug==True):
-                print "\nScore 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = ", guassian_fit[0]
-                print "Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = ",guassian_fit[1]
-                print "Score 7. Distance between expectation values of derivative histogram and profile histogram. = ",guassian_fit[2]
-                print "Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = ", guassian_fit[3]
-                print "Score 9. Chi squared value from Gaussian fit to pulse profile = ",guassian_fit[4]
-                print "Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = ", guassian_fit[5]
-                print "Score 11. Chi squared value from double Gaussian fit to pulse profile = ", guassian_fit[6]
-        
+                print("\nScore 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = ", guassian_fit[0])
+                print("Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = ",guassian_fit[1])
+                print("Score 7. Distance between expectation values of derivative histogram and profile histogram. = ",guassian_fit[2])
+                print("Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = ", guassian_fit[3])
+                print("Score 9. Chi squared value from Gaussian fit to pulse profile = ",guassian_fit[4])
+                print("Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = ", guassian_fit[5])
+                print("Score 11. Chi squared value from double Gaussian fit to pulse profile = ", guassian_fit[6])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing scores 5-11 (Gaussian Fitting) \n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing scores 5-11 (Gaussian Fitting) \n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Gaussian fitting exception")
     
     # ****************************************************************************************************
@@ -560,14 +560,14 @@ class PHCX(CandidateFileInterface):
             self.scores.append(float(candidateParameters[3]))# Score 15. Best pulse width.
             
             if(self.debug==True):
-                print "\nScore 12. Best period = "         , candidateParameters[0]
-                print "Score 13. Best S/N value = "        , candidateParameters[1], " Filtered value = ", self.filterScore(13,float(candidateParameters[1]))
-                print "Score 14. Best DM value = "         , candidateParameters[2], " Filtered value = ", self.filterScore(14,float(candidateParameters[2]))
-                print "Score 15. Best pulse width = "      , candidateParameters[3]
-        
+                print("\nScore 12. Best period = ", candidateParameters[0])
+                print("Score 13. Best S/N value = ", candidateParameters[1], " Filtered value = ", self.filterScore(13,float(candidateParameters[1])))
+                print("Score 14. Best DM value = ", candidateParameters[2], " Filtered value = ", self.filterScore(14,float(candidateParameters[2])))
+                print("Score 15. Best pulse width = ", candidateParameters[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing candidate parameters 12-15\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing candidate parameters 12-15\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Candidate parameters exception")
     
     # ****************************************************************************************************
@@ -604,14 +604,14 @@ class PHCX(CandidateFileInterface):
             self.scores.append(float(DMCurveFitting[3]))# Score 19. Chi squared value from DM curve fit.
             
             if(self.debug==True):
-                print "\nScore 16. SNR / SQRT( (P-W) / W ) = " , DMCurveFitting[0]
-                print "Score 17. Difference between fitting factor, Prop, and 1 = " , DMCurveFitting[1]
-                print "Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = ", DMCurveFitting[2], " Filtered value = ", self.filterScore(18,float(DMCurveFitting[2]))
-                print "Score 19. Chi squared value from DM curve fit = " , DMCurveFitting[3]
-        
+                print("\nScore 16. SNR / SQRT( (P-W) / W ) = ", DMCurveFitting[0])
+                print("Score 17. Difference between fitting factor, Prop, and 1 = ", DMCurveFitting[1])
+                print("Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = ", DMCurveFitting[2], " Filtered value = ", self.filterScore(18,float(DMCurveFitting[2])))
+                print("Score 19. Chi squared value from DM curve fit = ", DMCurveFitting[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing DM curve fitting 16-19\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing DM curve fitting 16-19\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("DM curve fitting exception")
     
     # ****************************************************************************************************
@@ -644,13 +644,13 @@ class PHCX(CandidateFileInterface):
             self.scores.append(float(subbandScores[2]))# Score 22. Sum of correlation coefficients between sub-bands and profile.
             
             if(self.debug==True):
-                print "\nScore 20. RMS of peak positions in all sub-bands = " , subbandScores[0]
-                print "Score 21. Average correlation coefficient for each pair of sub-bands = " , subbandScores[1]
-                print "Score 22. Sum of correlation coefficients between sub-bands and profile = " , subbandScores[2]
-        
+                print("\nScore 20. RMS of peak positions in all sub-bands = ", subbandScores[0])
+                print("Score 21. Average correlation coefficient for each pair of sub-bands = ", subbandScores[1])
+                print("Score 22. Sum of correlation coefficients between sub-bands and profile = ", subbandScores[2])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing subband scores 20-22\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing subband scores 20-22\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Subband scoring exception")
     
     # ****************************************************************************************************

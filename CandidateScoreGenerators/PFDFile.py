@@ -113,14 +113,14 @@ class PFD(CandidateFileInterface):
         test = infile.read(16)
         has_posn = 1
         for ii in range(16):
-            if test[ii] not in '0123456789:.-\0':
+            if test[ii:ii+1] not in b'0123456789:.-\0':
                 has_posn = 0
                 break
             
         if has_posn:
-            self.rastr = test[:test.find('\0')]
+            self.rastr = test.split(b'\0', 1)[0].decode('ascii', 'ignore')
             test = infile.read(16)
-            self.decstr = test[:test.find('\0')]
+            self.decstr = test.split(b'\0', 1)[0].decode('ascii', 'ignore')
             (self.dt, self.startT) = struct.unpack(swapchar+"dd", infile.read(2*8))
         else:
             self.rastr = "Unknown"
@@ -216,8 +216,8 @@ class PFD(CandidateFileInterface):
             
             # If candidate file is invalid in some way...
             if(self.isValid()==False):
-                
-                print "Invalid PFD candidate: ",self.cand
+
+                print("Invalid PFD candidate: ",self.cand)
                 scores=[]
                 
                 # Return only NaN values for scores.
@@ -227,7 +227,7 @@ class PFD(CandidateFileInterface):
             
             # Candidate file is valid.
             else:
-                print "Candidate file valid."
+                print("Candidate file valid.")
                 self.profile = array(self.getprofile())
             
         # Just go directly to score generation without checks.
@@ -247,7 +247,7 @@ class PFD(CandidateFileInterface):
         Returns:
         The candidate profile data (an array) scaled to within the range [0,255].
         """
-        if not self.__dict__.has_key('subdelays'):
+        if 'subdelays' not in self.__dict__:
             self.dedisperse()
           
         normprof = self.sumprof - min(self.sumprof)
@@ -413,7 +413,7 @@ class PFD(CandidateFileInterface):
         Return the calculated reduced-chi^2 of the current summed profile.
         """
         
-        if not self.__dict__.has_key('subdelays'):
+        if 'subdelays' not in self.__dict__:
             self.dedisperse()
             
         if prof is None:  prof = self.sumprof
@@ -429,7 +429,7 @@ class PFD(CandidateFileInterface):
         in the plot to the (low:high) slice defined by the phasebins option
         if it is a tuple (low,high) instead of the string 'All'. 
         """
-        if not self.__dict__.has_key('subdelays'):
+        if 'subdelays' not in self.__dict__:
             self.dedisperse()
         
         lo, hi = 0.0, self.proflen
@@ -493,13 +493,13 @@ class PFD(CandidateFileInterface):
             # Add first scores.
             
             if(self.debug==True):
-                print "curve = ",curve
-            
-            return curve   
-        
+                print("curve = ", curve)
+
+            return curve
+
         except Exception as e: # catch *all* exceptions
-            print "Error getting DM curve data from PFD file\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error getting DM curve data from PFD file\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("DM curve extraction exception")
             return []
     
@@ -529,8 +529,8 @@ class PFD(CandidateFileInterface):
             return stats
         
         except Exception as e: # catch *all* exceptions
-            print "Error getting Profile stat scores from PFD file\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error getting Profile stat scores from PFD file\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Profile stat score extraction exception")
             return []
     
@@ -561,8 +561,8 @@ class PFD(CandidateFileInterface):
             return stats  
         
         except Exception as e: # catch *all* exceptions
-            print "Error getting DM curve stat scores from PFD file\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error getting DM curve stat scores from PFD file\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("DM curve stat score extraction exception")
             return []
         
@@ -647,14 +647,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(sin_fit[3])) # Score 4.  Sum over residuals.
             
             if(self.debug==True):
-                print "\nScore 1. Chi-Squared value for sine fit to raw profile = ",sin_fit[0]
-                print "Score 2. Chi-Squared value for sine-squared fit to amended profile = ",sin_fit[1]
-                print "Score 3. Difference between maxima = ",sin_fit[2]
-                print "Score 4. Sum over residuals = ",sin_fit[3]
-        
+                print("\nScore 1. Chi-Squared value for sine fit to raw profile = ",sin_fit[0])
+                print("Score 2. Chi-Squared value for sine-squared fit to amended profile = ",sin_fit[1])
+                print("Score 3. Difference between maxima = ",sin_fit[2])
+                print("Score 4. Sum over residuals = ",sin_fit[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing scores 1-4 (Sinusoid Fitting) \n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing scores 1-4 (Sinusoid Fitting) \n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Sinusoid fitting exception")
             
     
@@ -717,17 +717,17 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(guassian_fit[6]))# Score 11. Chi squared value from double Gaussian fit to pulse profile.
             
             if(self.debug==True):
-                print "\nScore 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = ", guassian_fit[0]
-                print "Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = ",guassian_fit[1]
-                print "Score 7. Distance between expectation values of derivative histogram and profile histogram. = ",guassian_fit[2]
-                print "Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = ", guassian_fit[3]
-                print "Score 9. Chi squared value from Gaussian fit to pulse profile = ",guassian_fit[4]
-                print "Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = ", guassian_fit[5]
-                print "Score 11. Chi squared value from double Gaussian fit to pulse profile = ", guassian_fit[6]
-        
+                print("\nScore 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = ", guassian_fit[0])
+                print("Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = ",guassian_fit[1])
+                print("Score 7. Distance between expectation values of derivative histogram and profile histogram. = ",guassian_fit[2])
+                print("Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = ", guassian_fit[3])
+                print("Score 9. Chi squared value from Gaussian fit to pulse profile = ",guassian_fit[4])
+                print("Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = ", guassian_fit[5])
+                print("Score 11. Chi squared value from double Gaussian fit to pulse profile = ", guassian_fit[6])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing scores 5-11 (Gaussian Fitting) \n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing scores 5-11 (Gaussian Fitting) \n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Gaussian fitting exception")
     
     # ****************************************************************************************************
@@ -763,14 +763,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(candidateParameters[3]))# Score 15. Best pulse width.
             
             if(self.debug==True):
-                print "\nScore 12. Best period = "         , candidateParameters[0]
-                print "Score 13. Best S/N value = "        , candidateParameters[1], " Filtered value = ", self.filterScore(13,float(candidateParameters[1]))
-                print "Score 14. Best DM value = "         , candidateParameters[2], " Filtered value = ", self.filterScore(14,float(candidateParameters[2]))
-                print "Score 15. Best pulse width = "      , candidateParameters[3]
-        
+                print("\nScore 12. Best period = ", candidateParameters[0])
+                print("Score 13. Best S/N value = ", candidateParameters[1], " Filtered value = ", self.filterScore(13,float(candidateParameters[1])))
+                print("Score 14. Best DM value = ", candidateParameters[2], " Filtered value = ", self.filterScore(14,float(candidateParameters[2])))
+                print("Score 15. Best pulse width = ", candidateParameters[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing candidate parameters 12-15\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing candidate parameters 12-15\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Candidate parameters exception")
     
     # ****************************************************************************************************
@@ -807,14 +807,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(DMCurveFitting[3]))# Score 19. Chi squared value from DM curve fit.
             
             if(self.debug==True):
-                print "\nScore 16. SNR / SQRT( (P-W) / W ) = " , DMCurveFitting[0]
-                print "Score 17. Difference between fitting factor, Prop, and 1 = " , DMCurveFitting[1]
-                print "Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = ", DMCurveFitting[2], " Filtered value = ", self.filterScore(18,float(DMCurveFitting[2]))
-                print "Score 19. Chi squared value from DM curve fit = " , DMCurveFitting[3]
-        
+                print("\nScore 16. SNR / SQRT( (P-W) / W ) = ", DMCurveFitting[0])
+                print("Score 17. Difference between fitting factor, Prop, and 1 = ", DMCurveFitting[1])
+                print("Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = ", DMCurveFitting[2], " Filtered value = ", self.filterScore(18,float(DMCurveFitting[2])))
+                print("Score 19. Chi squared value from DM curve fit = ", DMCurveFitting[3])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing DM curve fitting 16-19\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing DM curve fitting 16-19\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("DM curve fitting exception")
     
     # ****************************************************************************************************
@@ -847,13 +847,13 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(subbandScores[2]))# Score 22. Sum of correlation coefficients between sub-bands and profile.
             
             if(self.debug==True):
-                print "\nScore 20. RMS of peak positions in all sub-bands = " , subbandScores[0]
-                print "Score 21. Average correlation coefficient for each pair of sub-bands = " , subbandScores[1]
-                print "Score 22. Sum of correlation coefficients between sub-bands and profile = " , subbandScores[2]
-        
+                print("\nScore 20. RMS of peak positions in all sub-bands = ", subbandScores[0])
+                print("Score 21. Average correlation coefficient for each pair of sub-bands = ", subbandScores[1])
+                print("Score 22. Sum of correlation coefficients between sub-bands and profile = ", subbandScores[2])
+
         except Exception as e: # catch *all* exceptions
-            print "Error computing subband scores 20-22\n\t", sys.exc_info()[0]
-            print self.format_exception(e)
+            print("Error computing subband scores 20-22\n\t", sys.exc_info()[0])
+            print(self.format_exception(e))
             raise Exception("Subband scoring exception")
     
     # ****************************************************************************************************

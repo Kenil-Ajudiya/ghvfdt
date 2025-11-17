@@ -149,11 +149,11 @@ class ProfileOperationsInterface(Utilities):
         nbins = ceil( rnge / binwidth )
         
         if(self.debug):
-            print "\tIQR: ",iqr
-            print "\tBin Width: ",binwidth
-            print "\tRange: ",rnge
-            print "\tNumber of bins: ", nbins
-            
+            print("\tIQR: ",iqr)
+            print("\tBin Width: ",binwidth)
+            print("\tRange: ",rnge)
+            print("\tNumber of bins: ", nbins)
+
         return int(nbins)
     
     # ****************************************************************************************************

@@ -1,4 +1,4 @@
-import psrchive, glob, os
+import psrchive
 import numpy as np
 
 #pfds=glob.glob('pfd_select/*.pfd')

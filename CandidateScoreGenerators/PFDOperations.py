@@ -14,6 +14,7 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
 """
 
 # Numpy Imports:
+import numbers
 from numpy import where
 from numpy import asarray
 from numpy import arange
@@ -41,7 +42,7 @@ from ProfileOperations import ProfileOperations
 #
 # ****************************************************************************************************
 
-isintorlong = lambda x: type(x) == type(0) or type(x) == type(0L)
+isintorlong = lambda x: (isinstance(x, (int, Num.integer)) or isinstance(x, numbers.Integral)) and not isinstance(x, bool)
 
 class PFDOperations(ProfileOperations):
     """                
@@ -177,7 +178,7 @@ class PFDOperations(ProfileOperations):
 
         peak = profile.profile.argmax() # Finds the index of the largest value across the x-axis.
 
-        xData = array(range(len(profile.profile)))
+        xData = array(list(range(len(profile.profile))))
 
 
 
@@ -248,7 +249,7 @@ class PFDOperations(ProfileOperations):
         # Extract DM curve.
         curve=[]
         curve.append(y_values)
-        curve.append(range(len(y_values)))
+        curve.append(list(range(len(y_values))))
             
         yData = curve[0]
         yData = 255./max(yData)*yData
@@ -310,7 +311,7 @@ class PFDOperations(ProfileOperations):
         # Extract DM curve.
         curve=[]
         curve.append(y_values)
-        curve.append(range(len(y_values)))
+        curve.append(list(range(len(y_values))))
             
         yData = curve[0]
         yData = 255./max(yData)*yData
@@ -553,7 +554,7 @@ class PFDOperations(ProfileOperations):
         kernel = win * self.sinc(xs)
         
         if (0):
-            print "would have plotted."
+            print("would have plotted.")
         return FFT.irfft(FFT.rfft(kernel) * FFT.rfft(comb))
     
     # ****************************************************************************************************

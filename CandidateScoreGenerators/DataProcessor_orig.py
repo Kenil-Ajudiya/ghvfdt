@@ -24,9 +24,9 @@ import Utilities
 import Candidate
 
 #from PIL import Image
-import Image
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+# import Image
+# import matplotlib.pyplot as plt
+# import matplotlib.image as mpimg
 
 # ****************************************************************************************************
 #
@@ -255,7 +255,7 @@ class DataProcessor(Utilities.Utilities):
         
     def dmprofPFD(self,directory,verbose,outPath,arff,processSingleCandidate):
         """
-        Generates DM and profile stat scores (no 22 candidate scores).
+        Generates DM and profile stat scores (no 22 candidate scores). 
         
         Parameters:
         directory    -    the directory to look for candidates in.
@@ -467,7 +467,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print "User has not provided a search directory - searching local directory"
+            print("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -500,9 +500,9 @@ class DataProcessor(Utilities.Utilities):
                                 self.storeScore(cand, scores, outPath)
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print "Error reading profile data :\n\t", sys.exc_info()[0]
-                            print self.format_exception(e)
-                            print cand, " did not have scores generated."
+                            print("Error reading profile data :\n\t", sys.exc_info()[0])
+                            print(self.format_exception(e))
+                            print(cand, " did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -541,9 +541,9 @@ class DataProcessor(Utilities.Utilities):
                             successes+=1
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print "Error reading profile data :\n\t", sys.exc_info()[0]
-                            print self.format_exception(e)
-                            print directory, " did not have scores generated."
+                            print("Error reading profile data :\n\t", sys.exc_info()[0])
+                            print(self.format_exception(e))
+                            print(directory, " did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,line+"\n")
                             failures+=1
             else:
@@ -564,9 +564,9 @@ class DataProcessor(Utilities.Utilities):
                     successes+=1
                     
                 except Exception as e: # Catch *all* exceptions.
-                    print "Error reading profile data :\n\t", sys.exc_info()[0]
-                    print self.format_exception(e)
-                    print directory, " did not have scores generated."
+                    print("Error reading profile data :\n\t", sys.exc_info()[0])
+                    print(self.format_exception(e))
+                    print(directory, " did not have scores generated.")
                     self.appendToFile(self.candidateErrorLog,singleCand+"\n")
                     failures+=1
         
@@ -577,12 +577,12 @@ class DataProcessor(Utilities.Utilities):
             outputText+=s+"\n"
         
         self.appendToFile(outPath, outputText)
-        
-        print "\nCandidates processed:\t",candidatesProcessed
-        print "Successes:\t", successes
-        print "Failures:\t", failures
-        print "Execution time: ", str(end - start)
-        
+
+        print("\nCandidates processed:\t",candidatesProcessed)
+        print("Successes:\t", successes)
+        print("Failures:\t", failures)
+        print("Execution time: ", str(end - start))
+
     # ****************************************************************************************************
                         
     def processSeparately(self,directory,verbose,fileTypeRegexes,processSingleCandidate):
@@ -613,7 +613,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print "User has not provided a search directory - searching local directory"
+            print("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -637,9 +637,9 @@ class DataProcessor(Utilities.Utilities):
                             self.outputScores(scores,cand)
                                 
                         except Exception as e: # Catch *all* exceptions.
-                            print "Error processing candidates :\n\t", sys.exc_info()[0]
-                            print self.format_exception(e)
-                            print cand, " did not have scores generated."
+                            print("Error processing candidates :\n\t", sys.exc_info()[0])
+                            print(self.format_exception(e))
+                            print(cand, " did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -658,19 +658,19 @@ class DataProcessor(Utilities.Utilities):
                 successes+=1
                     
             except Exception as e: # Catch *all* exceptions.
-                print "Error processing candidates :\n\t", sys.exc_info()[0]
-                print self.format_exception(e)
-                print singleCand, " did not have scores generated."
+                print("Error processing candidates :\n\t", sys.exc_info()[0])
+                print(self.format_exception(e))
+                print(singleCand, " did not have scores generated.")
                 self.appendToFile(self.candidateErrorLog,directory+"\n")
                 failures+=1
         
         end = datetime.datetime.now()
-        
-        print "\nCandidates processed:\t",candidatesProcessed
-        print "Successes:\t", successes
-        print "Failures:\t", failures
-        print "Execution time: ", str(end - start)
-    
+
+        print("\nCandidates processed:\t",candidatesProcessed)
+        print("Successes:\t", successes)
+        print("Failures:\t", failures)
+        print("Execution time: ", str(end - start))
+
     # ****************************************************************************************************
     
     def label(self,directory,verbose,fileTypeRegexes):
@@ -697,7 +697,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print "User has not provided a search directory - searching local directory"
+            print("User has not provided a search directory - searching local directory")
         
         metaFile = directory + "/Cands.meta"
         scoresFile = directory + "/Scores.csv"
@@ -792,9 +792,9 @@ class DataProcessor(Utilities.Utilities):
                         
                         self.appendToFile(metaFile,cand+","+str(label)+"\n")
                     except Exception as e: # Catch *all* exceptions.
-                        print "Error reading profile data :\n\t", sys.exc_info()[0]
-                        print self.format_exception(e)
-                        print cand, " did not have scores generated."
+                        print("Error reading profile data :\n\t", sys.exc_info()[0])
+                        print(self.format_exception(e))
+                        print(cand, " did not have scores generated.")
                         self.appendToFile(self.candidateErrorLog,cand+"\n")
                         failures+=1
                         continue
@@ -803,12 +803,12 @@ class DataProcessor(Utilities.Utilities):
         
         end = datetime.datetime.now()
         
-        print "\nCandidates processed:\t",candidatesProcessed
-        print "Successes:\t", successes
-        print "Failures:\t", failures
-        print "Positive:\t", self.positive
-        print "Negative:\t", self.negative
-        print "Execution time: ", str(end - start)
+        print("\nCandidates processed:\t",candidatesProcessed)
+        print("Successes:\t", successes)
+        print("Failures:\t", failures)
+        print("Positive:\t", self.positive)
+        print("Negative:\t", self.negative)
+        print("Execution time: ", str(end - start))
     
     # ******************************************************************************************
     
@@ -844,7 +844,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print "User has not provided a search directory - searching local directory"
+            print("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -876,9 +876,9 @@ class DataProcessor(Utilities.Utilities):
                                 self.storeScore(cand, scores, outPath)
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print "Error reading profile data :\n\t", sys.exc_info()[0]
-                            print self.format_exception(e)
-                            print cand, " did not have scores generated."
+                            print("Error reading profile data :\n\t", sys.exc_info()[0])
+                            print(self.format_exception(e))
+                            print(cand, " did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -918,9 +918,9 @@ class DataProcessor(Utilities.Utilities):
                     successes+=1
                         
                 except Exception as e: # Catch *all* exceptions.
-                    print "Error reading profile data :\n\t", sys.exc_info()[0]
-                    print self.format_exception(e)
-                    print directory, " did not have scores generated."
+                    print("Error reading profile data :\n\t", sys.exc_info()[0])
+                    print(self.format_exception(e))
+                    print(directory, " did not have scores generated.")
                     self.appendToFile(self.candidateErrorLog,singleCand+"\n")
                     failures+=1
             else:
@@ -958,9 +958,9 @@ class DataProcessor(Utilities.Utilities):
                             successes+=1
                                 
                         except Exception as e: # Catch *all* exceptions.
-                            print "Error reading profile data :\n\t", sys.exc_info()[0]
-                            print self.format_exception(e)
-                            print directory, " did not have scores generated."
+                            print("Error reading profile data :\n\t", sys.exc_info()[0])
+                            print(self.format_exception(e))
+                            print(directory, " did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,line+"\n")
                             failures+=1
                 
@@ -972,10 +972,10 @@ class DataProcessor(Utilities.Utilities):
             outputText+=s+"\n"
         
         self.appendToFile(outPath, outputText)
-        
-        print "\nCandidates processed:\t",candidatesProcessed
-        print "Successes:\t", successes
-        print "Failures:\t", failures
-        print "Execution time: ", str(end - start)
-    
+
+        print("\nCandidates processed:\t", candidatesProcessed)
+        print("Successes:\t", successes)
+        print("Failures:\t", failures)
+        print("Execution time: ", str(end - start))
+
     # ******************************************************************************************

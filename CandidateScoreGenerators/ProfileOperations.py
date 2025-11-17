@@ -127,7 +127,7 @@ from numpy import corrcoef
 from numpy import append
 
 from scipy.optimize import leastsq
-from scipy import std
+from numpy import std
 
 import matplotlib.pyplot as plt # Revision:1
 
@@ -370,7 +370,7 @@ class ProfileOperations(ProfileOperationsInterface):
         """
         
         # Obtain parameters for fitting.
-        xData = array(range(len(yData)))
+        xData = array(list(range(len(yData))))
         amplitude = abs( max(yData) - min(yData) ) / 2.
         frequency = float( maxima / (len(yData) - 1.) )
         # The background terms decides where the middle of the sine curve will be,
@@ -448,14 +448,14 @@ class ProfileOperations(ProfileOperationsInterface):
             ssTot = ((yData-yData.mean())**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
-            print "\n\tSine fit to Pulse profile statistics:"
-            print "\tStandard Error: ", ssErr
-            print "\tTotal Error: ", ssTot
-            print "\tR-Squared: ", rsquared
-            print "\tAmplitude: ",amplitude
-            print "\tFrequency: ",str(leastSquaresParameters[0])
-            print "\tPhi: ",str(leastSquaresParameters[1])
-            print "\tBackground: ",background
+            print("\n\tSine fit to Pulse profile statistics:")
+            print("\tStandard Error: ", ssErr)
+            print("\tTotal Error: ", ssTot)
+            print("\tR-Squared: ", rsquared)
+            print("\tAmplitude: ",amplitude)
+            print("\tFrequency: ",str(leastSquaresParameters[0]))
+            print("\tPhi: ",str(leastSquaresParameters[1]))
+            print("\tBackground: ",background)
             plt.plot(xData,yData,'o', xData, __evaluate(xData, leastSquaresParameters,amplitude,background))
             plt.title("Sine fit to Profile")
             plt.show()
@@ -506,7 +506,7 @@ class ProfileOperations(ProfileOperationsInterface):
             return abs(amp) * pow ( sin ( 2 * pi * f * x + phi),2) + abs(bg)
         
         # Obtain parameters for fitting.
-        xData = array(range(len(yData)))
+        xData = array(list(range(len(yData))))
         #amplitude = max(yData)
         amplitude = abs( max(yData) - min(yData) ) / 2. # Revision:3b
         frequency = float( maxima / (len(yData) - 1.) / 2. )
@@ -545,13 +545,13 @@ class ProfileOperations(ProfileOperationsInterface):
             ssTot = ((yData-mean(yData))**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
-            print "\n\tSine Squared fit to Pulse profile statistics:"
-            print "\tStandard Error: ", ssErr
-            print "\tTotal Error: ", ssTot
-            print "\tR-Squared: ", rsquared
-            print "\tAmplitude: ",amplitude
-            print "\tFrequency: ",str(leastSquaresParameters[0])
-            print "\tPhi: ",str(leastSquaresParameters[1])
+            print("\n\tSine Squared fit to Pulse profile statistics:")
+            print("\tStandard Error: ", ssErr)
+            print("\tTotal Error: ", ssTot)
+            print("\tR-Squared: ", rsquared)
+            print("\tAmplitude: ",amplitude)
+            print("\tFrequency: ",str(leastSquaresParameters[0]))
+            print("\tPhi: ",str(leastSquaresParameters[1]))
             plt.plot(xData,yData,'o', xData, __evaluate(xData, leastSquaresParameters,amplitude,background))
             plt.title("Sine Squared fit to Profile")
             plt.show()
@@ -638,10 +638,10 @@ class ProfileOperations(ProfileOperationsInterface):
         derivativeHistogram_sigma, derivativeHistogram_expect, derivativeHistogram_maximum = gaussianFitToDerivativeHistogram[0]
         
         if(self.debug==True):
-            print "\n\tGaussian fit to Derivative Histogram details: " 
-            print "\tSigma of derivative histogram = " , derivativeHistogram_sigma
-            print "\tMu of derivative histogram = "    , derivativeHistogram_expect
-            print "\tMax of derivative histogram = "   , derivativeHistogram_maximum
+            print("\n\tGaussian fit to Derivative Histogram details: ")
+            print("\tSigma of derivative histogram = ", derivativeHistogram_sigma)
+            print("\tMu of derivative histogram = ", derivativeHistogram_expect)
+            print("\tMax of derivative histogram = ", derivativeHistogram_maximum)
         
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
@@ -659,10 +659,10 @@ class ProfileOperations(ProfileOperationsInterface):
         profileHistogram_sigma, profileHistogram_expect, profileHistogram_maximum = gaussianFitToProfileHistogram[0]
         
         if(self.debug==True):
-            print "\n\tGaussian fit to Profile Histogram details: " 
-            print "\tSigma of profile histogram = " , profileHistogram_sigma
-            print "\tMu of profile histogram = "    , profileHistogram_expect
-            print "\tMax of profile histogram = "   , profileHistogram_maximum
+            print("\n\tGaussian fit to Profile Histogram details: " )
+            print("\tSigma of profile histogram = " , profileHistogram_sigma)
+            print("\tMu of profile histogram = "    , profileHistogram_expect)
+            print("\tMax of profile histogram = "   , profileHistogram_maximum)
             
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
@@ -682,12 +682,12 @@ class ProfileOperations(ProfileOperationsInterface):
         gf_ProfileHistogram_fixed_xmax = gf_ProfileHistogram_fixed_Expect[4]
         
         if(self.debug==True):
-            print "\n\tGaussian fits to Profile Historgram with fixed Mu details:" 
-            print "\tSigma of Gaussian fit to Profile Historgram = "         , gf_ProfileHistogram_fixed_sigma
-            print "\tMax of Gaussian fit to Profile Historgram = "           , gf_ProfileHistogram_fixed_maximum
-            print "\tFWHM of Gaussian fit to Profile Historgram = "          , gf_ProfileHistogram_fixed_fwhm
-            print "\tChi-squared of Gaussian fit to Profile Historgram = "   , gf_ProfileHistogram_fixed_chi
-            print "\txmax of Gaussian fit to Profile Historgram = "  
+            print("\n\tGaussian fits to Profile Historgram with fixed Mu details:")
+            print("\tSigma of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_sigma)
+            print("\tMax of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_maximum)
+            print("\tFWHM of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_fwhm)
+            print("\tChi-squared of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_chi)
+            print("\txmax of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_xmax)
         
         dexp_fix = abs(gf_ProfileHistogram_fixed_xmax - profileHistogram_expect)      # Score 5.
         amp_fix =  abs( gf_ProfileHistogram_fixed_maximum / profileHistogram_maximum) # Score 6.
@@ -801,7 +801,7 @@ class ProfileOperations(ProfileOperationsInterface):
             return reversedList
         
         if xData == []:
-            xData = range(len(yData))
+            xData = list(range(len(yData)))
         
         # Set up variables required to perfrom fit.
         _exit,counter = 0,0
@@ -1007,7 +1007,7 @@ class ProfileOperations(ProfileOperationsInterface):
             return ( abs(maximum) * exp( (-((x - xmax) / sigma )**2) / 2))
         
         if xData == []:
-            xData = range(len(yData))
+            xData = list(range(len(yData)))
         if len(xData) == len(yData)+1:
             xData = xData[0:-1]
         
@@ -1062,7 +1062,7 @@ class ProfileOperations(ProfileOperationsInterface):
         xData =[]  # @UnusedVariable
         part1,part2 = [],[]
         yDataLength = len(yData)
-        xData = range(yDataLength)
+        xData = list(range(yDataLength))
         xmax = argmax(yData) # Finds index of max value in yData.
         
         # Check if maximum is near borders of the interval.
@@ -1211,7 +1211,7 @@ class ProfileOperations(ProfileOperationsInterface):
         
         ###### perform gaussian fit ######
         if xData == []:
-            xData = range(len(yData))
+            xData = list(range(len(yData)))
         
         expect = argmax(yData)
         maximum = yData[expect]
@@ -1279,7 +1279,7 @@ class ProfileOperations(ProfileOperationsInterface):
             sigma, mu, maximum, bg = paras
             return ( abs(maximum) * exp( (-((x - mu) / sigma )**2) / 2) + abs(bg) )
         
-        xData = range(len(yData))
+        xData = list(range(len(yData)))
         pos = argmax(yData) # indexOfLargestValue_xAxis
         newx,newy = xData,yData
         tolerance,limit = 0,5
@@ -1373,7 +1373,7 @@ class ProfileOperations(ProfileOperationsInterface):
                 else:
                     newy.append(yData[i])
                     
-                newx = range(len(newy))
+                newx = list(range(len(newy)))
                     
             counter += 1
             if counter == 7:
@@ -1444,7 +1444,7 @@ class ProfileOperations(ProfileOperationsInterface):
             return ((abs(maximum1) * exp((-((x - mu1) / abs(sigma1))**2) / 2)) +
                        (abs(maximum2) * exp((-((x - mu2) / abs(sigma2))**2) / 2)) + (abs(bg1) + abs(bg2))/2)
             
-        xData = range(len(yData))
+        xData = list(range(len(yData)))
         
         # Perform gaussian fit.
         leastSquaresParameters = leastsq(__residuals, p0, args=(xData,yData))

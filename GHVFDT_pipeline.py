@@ -1,52 +1,53 @@
-#File path location. 
-pfd_path='/data/testpfd/pfds' # path of all pfd files for classification. It is required if scores=''
-scores='' #Keep scores='' if scores not available
-model='/data/non_ML_codes/pipeline/GHRSS_models/GHRSS1-3.model' #Necessary
+# File path location. 
+pfd_path='/lustre_archive/spotlight/Kenil/ghvfdt/data' # Path of all pfd files for classification. It is required if scores=''
+scores='' # Keep scores='' if scores not available
+model='/lustre_archive/spotlight/Kenil/ghvfdt/GHRSS_models/GHRSS1-3.model' #Necessary
 
-#Use modules
+# Use modules
 fp_nulling=True
 tp_nulling=True
 schan=True
 
-#packages
-import os, subprocess, glob, psrchive
+import os, glob
 import numpy as np
-import matplotlib.pyplot as plt
 from nulling import pfd_data, nullsnr
 from strongchan import snrcharm
 
 current_path=os.getcwd()
 if(scores==''):
-	os.system('rm -r scores.arff')
-	os.system('python2 CandidateScoreGenerators/ScoreGenerator.py -c '+pfd_path+' -o scores.arff --pfd --arff --dmprof')
-	scores=current_path+'/scores.arff'
+    if os.path.exists('scores.arff'):
+        os.remove('scores.arff')
+    os.system('python CandidateScoreGenerators/ScoreGenerator.py -c ' + pfd_path + ' -o scores.arff --pfd --arff --dmprof')
+    scores=current_path+'/scores.arff'
 
-os.system('rm -r predict.txt*')
-os.system('java -jar ML.jar -v -m'+model+' -o' +current_path+'/predict.txt -p' + scores+' -a1')
+if os.path.exists('predict.txt'):
+    os.remove('predict.txt')
+    os.remove('predict.txt.negative')
+os.system('java -jar ML.jar -v -m' + model + ' -o' + current_path + '/predict.txt -p' + scores + ' -a1') # No space between the option flags and their values.
 
-#Read GH-VFDT predict.txt and copy to pfd_select
+# Read GH-VFDT predict.txt and copy to pfd_select
 with open('predict.txt','r') as f:
 	lines=f.read()
 
-#copy pfd files from pfd_path to pfd_select in pipeline folder
+# Copy pfd files from pfd_path to pfd_select in pipeline folder
 lines=lines.split('\n')[1:-1]
-files=[i.split(',')[0] for i in lines]
+files=[line.split(',')[0] for line in lines]
 os.system('rm -r pfd_select')
 os.system('mkdir pfd_select')
-for i in files:
-	os.system('cp '+i+' pfd_select/')
+for file in files:
+	os.system('cp ' + file + ' pfd_select/')
 
-#creating PDF files of ps files as ML_files.pdf
+# Creating PDF files of ps files as ML_files.pdf
 pfds=glob.glob('pfd_select/*.pfd')
 os.system('rm -r *.pfd*')
-for i in pfds:
-	os.system('show_pfd -noxwin ' + i)
+for pfd in pfds:
+	os.system('show_pfd -noxwin ' + pfd)
 
 os.system('gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE=ML_files.pdf -dBATCH *.ps')
 os.system('rm -r *.pfd*')
 
-#using filters
-pfd_dat=[pfd_data(i) for i in pfds]
+# Using filters
+pfd_dat=[pfd_data(pfd) for pfd in pfds]
 null_fp=[]
 null_tp=[]
 schan_rm=[]
@@ -60,11 +61,11 @@ for j in range(len(pfd_dat)):
 	snrfp=nullsnr(fp)
 	snrtp=nullsnr(tp)
 	snrschan=snrcharm(fp)
-	if(snrfp>4.0): #Threshold for fp nulling removed SNR
+	if(snrfp>4.0): # Threshold for fp nulling removed SNR
 		null_fp.append(pfds[j])
-	if(snrtp>4.0): #Threshold for tp nulling removed SNR
+	if(snrtp>4.0): # Threshold for tp nulling removed SNR
 		null_tp.append(pfds[j])
-	if(snrschan>4.0): #Threshold for Strong channel removed candidates SNR
+	if(snrschan>4.0): # Threshold for Strong channel removed candidates SNR
 		schan_rm.append(pfds[j])
 
 # Using combination of filters
@@ -93,15 +94,14 @@ else:
 				if i in schan_rm:
 					filtered.append(i)
 
-#creating filtered files PDF
-for i in filtered:
-	os.system('show_pfd -noxwin ' + i)
+# Creating filtered files PDF
+for pdf in filtered:
+	os.system('show_pfd -noxwin ' + pdf)
 
 os.system('gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE=filtered.pdf -dBATCH *.ps')
 os.system('rm -r filtered')
 os.system('mkdir -p filtered')
 os.system('cp *.ps filtered')
-os.system('rm -r *.pfd*')
+os.system('rm -rf *.pfd*')
 if(len(lines)<2):
 	print("There were no positive candidates")
-

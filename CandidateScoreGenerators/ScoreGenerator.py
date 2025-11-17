@@ -168,22 +168,22 @@ class ScoreGenerator:
         elif(self.processSingleCandidate==True):
             self.search = self.candidateDirectory
             
-        print "\n***********************************"
-        print "| Executing score generation code |"
-        print "***********************************"
-        print "\tCommand line arguments:"
-        print "\tDebug:",self.debug
-        print "\tWrite to single file:",self.singleFile
-        print "\tOutput path:",self.outputPath
-        print "\tExpect PFD files:",self.pfd
-        print "\tExpect PHCX files:",self.phcx
-        print "\tExpect SUPERB PHCX files:",self.superb
-        print "\tProduce ARFF file:",self.arff
-        print "\tCandidate directory:",self.candidateDirectory
-        print "\tProcess single candidate:",self.processSingleCandidate
-        print "\tLabel candidates:",self.label
-        print "\tGenerate DM and profile stats as scores only:",self.DM_PROFILE
-        print "\tSearch local directory:",self.searchLocalDirectory,"\n\n" 
+        print("\n***********************************")
+        print("| Executing score generation code |")
+        print("***********************************")
+        print("\tCommand line arguments:")
+        print("\tDebug:",self.debug)
+        print("\tWrite to single file:",self.singleFile)
+        print("\tOutput path:",self.outputPath)
+        print("\tExpect PFD files:",self.pfd)
+        print("\tExpect PHCX files:",self.phcx)
+        print("\tExpect SUPERB PHCX files:",self.superb)
+        print("\tProduce ARFF file:",self.arff)
+        print("\tCandidate directory:",self.candidateDirectory)
+        print("\tProcess single candidate:",self.processSingleCandidate)
+        print("\tLabel candidates:",self.label)
+        print("\tGenerate DM and profile stats as scores only:",self.DM_PROFILE)
+        print("\tSearch local directory:",self.searchLocalDirectory,"\n\n" )
         
         
         # Based on the command line parameters there multiple possible execution paths:
@@ -224,13 +224,13 @@ class ScoreGenerator:
             # Path 1. a)
             if(not self.singleFile):
                 # Process phcx files, written to separate files
-                print "Processing .phcx files and writing their scores to separate files."
+                print("Processing .phcx files and writing their scores to separate files.")
                 dp.processPHCXSeparately(self.search,self.debug,self.processSingleCandidate)
                 
             # Path 1. b)
             else:
                 # Process phcx files, written to single file.
-                print "Processing .phcx files and writing their scores to: ",self.outputPath
+                print("Processing .phcx files and writing their scores to: ",self.outputPath)
                 dp.processPHCXCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
                 
         # Path 2
@@ -238,13 +238,13 @@ class ScoreGenerator:
             # Path 2. a)
             if(not self.singleFile):
                 # Process pfd files, written to separate files.
-                print "Processing .pfd files and writing their scores to separate files."
+                print("Processing .pfd files and writing their scores to separate files.")
                 dp.processPFDSeparately(self.search,self.debug,self.processSingleCandidate)
                 
             # Path 2. b)
             else:
                 # Process pfd files, written to single file.
-                print "Processing .pfd files and writing their scores to: ",self.outputPath
+                print("Processing .pfd files and writing their scores to: ",self.outputPath)
                 dp.processPFDCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
                 
         # Path 3
@@ -252,18 +252,18 @@ class ScoreGenerator:
             # Path 3. a)
             if(not self.singleFile):
                 # Process pfd and phcx files, written to separate files.
-                print "Processing .pfd AND .phcx files and writing their scores to separate files."
+                print("Processing .pfd AND .phcx files and writing their scores to separate files.")
                 dp.processPFDAndPHCXSeparately(self.search,self.debug,self.processSingleCandidate)
                 
             # Path 3. b)
             else:
                 # Process pfd and phcx files, written to a single file.
-                print "Processing .pfd AND .phcx  files and writing their scores to: ",self.outputPath
+                print("Processing .pfd AND .phcx  files and writing their scores to: ",self.outputPath)
                 dp.processPFDAndPHCXCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
         
         # Path 4. a)
         elif(self.superb and not self.pfd and not self.phcx):
-            print "Processing SUPERB .phcx  files and writing their scores to: ",self.outputPath
+            print("Processing SUPERB .phcx  files and writing their scores to: ",self.outputPath)
             dp.processSUPERBCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
             
         # Path 5
@@ -274,10 +274,10 @@ class ScoreGenerator:
                 dp.processPFDAndPHCXCollectively(self.search,self.debug,self.outputPath,self.genProfileData,self.processSingleCandidate)
         
         else:
-            print "Didn't know what to do with your input."
-            
-        print "Done."
-    
+            print("Didn't know what to do with your input.")
+
+        print("Done.")
+
     # ****************************************************************************************************
       
 if __name__ == '__main__':

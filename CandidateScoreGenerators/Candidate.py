@@ -15,7 +15,7 @@ By Rob Lyon <robert.lyon@cs.man.ac.uk>
 """
 
 # Custom Imports
-import PHCXFile as phcx
+# import PHCXFile as phcx
 import PFDFile as pfd
 import SUPERBPHCXFile as superb
 

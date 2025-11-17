@@ -1,4 +1,3 @@
-import psrchive, glob, os
 import numpy as np
 from nulling import calcsnr
 
