@@ -21,17 +21,18 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
 +-----------------------------------------------------------------------------------------+
 
  Revision:0    Rob Lyon    Initial version of the re-written code.            05/02/2014
- 
 """
-import matplotlib as mpl
-mpl.use('Agg')
-
 # Command Line processing Imports:
-from optparse import OptionParser
+from cyclopts import App, Parameter
+from typing import Annotated
 
 # Custom file Imports:
 import Utilities
 import DataProcessor
+
+app = App("Candidate Score Generator",
+          help="Generates scores for pulsar candidates from their HDF5 or PFD files.",
+          version="1.0")
 
 # ******************************
 #
@@ -40,9 +41,9 @@ import DataProcessor
 # ******************************
 
 class ScoreGenerator:
-    """                
+    """
     Generates 22 scores that describe the key features of pulsar candidate, from the
-    candidate's own phcx file. The scores generated are as follows:
+    candidate's own hdf5 file. The scores generated are as follows:
     
     Score number    Description of score                                                                                Group
         1            Chi squared value from fitting since curve to pulse profile.                                    Sinusoid Fitting
@@ -74,7 +75,6 @@ class ScoreGenerator:
         22           Sum of correlation coefficients between sub-bands and profile.                                  Sub-band Scores
         
     Check out Sam Bates' thesis for more information, "Surveys Of The Galactic Plane For Pulsars" 2011.
-    
     """
     
     # ******************************
@@ -83,202 +83,109 @@ class ScoreGenerator:
     #
     # ******************************
 
-    def main(self,argv=None):
+    @app.default
+    def main(
+        candDir: Annotated[str, Parameter(name=["--candDir", "-c"], help="Path to directory containing candidates")] = "",
+        outputPath: Annotated[str, Parameter(name=["--outputPath", "-o"], help="Path to write scores (file)")] = "scores.arff",
+        hdf5: Annotated[bool, Parameter(name=["--hdf5"], help="Process only .hdf5 files")] = False,
+        pfd: Annotated[bool, Parameter(name=["--pfd"], help="Process only .pfd files")] = False,
+        arff: Annotated[bool, Parameter(name=["--arff"], help="Write candidate data to ARFF")] = False,
+        profile: Annotated[bool, Parameter(name=["--profile"], help="Generate profile rather than score data")] = False,
+        label: Annotated[bool, Parameter(name=["--label"], help="Enable interactive candidate labelling")] = False,
+        dmprof: Annotated[bool, Parameter(name=["--dmprof"], help="Generate DM and profile summary stats")] = False,
+        verbose: Annotated[bool, Parameter(name=["--verbose", "-v"], help="Verbose debugging output")] = False,
+    ):
         """
         Main entry point for the Application. Processes command line
         input and begins creating the scores.
-    
         """
         
-        # Python 2.4 argument processing.
-        parser = OptionParser()
-
-        # REQUIRED ARGUMENTS
-        # None.
-        
-        # OPTIONAL ARGUMENTS
-        parser.add_option("-c", action="store", dest="candDir",help='the path to the directory containing candidates (optional).',default="")
-        parser.add_option("-v", action="store_true", dest="verbose",help='Verbose debugging flag (optional).',default=False)
-        parser.add_option('-o', action="store", dest="outputPath",type="string",help='The path to write scores to (optional).',default="")
-        parser.add_option("--pfd", action="store_true", dest="pfd",help='Flag which indicates that ONLY .pfd files are being processed (optional).',default=False)
-        parser.add_option("--phcx", action="store_true", dest="phcx",help='Flag which indicates that ONLY .phcx files are being processed (optional).',default=False)
-        parser.add_option("--superb", action="store_true", dest="superb",help='Flag which indicates that ONLY SUPERB .phcx files are being processed (optional).',default=False)
-        parser.add_option("--arff", action="store_true", dest="arff",help='Flag which indicates that candidate data should be written to a ARFF file (optional).',default=False)
-        parser.add_option("--profile", action="store_true", dest="profile",help='Flag which indicates that profile, rather than score data should be generated (optional).',default=False)
-        parser.add_option("--label", action="store_true", dest="label",help='Flag which indicates that user labelling of candidates will be done (optional).',default=False)
-        parser.add_option("--dmprof", action="store_true", dest="dmprof",help='Flag which indicates that DM and profile summary stats should be generated (optional).',default=False)
-
-        (args,options) = parser.parse_args()# @UnusedVariable : Tells Eclipse IDE to ignore warning.
-        
-        # Update variables with command line parameters.
-        
-        self.debug = args.verbose
-        self.outputPath = args.outputPath
-        self.pfd = args.pfd
-        self.phcx = args.phcx
-        self.arff = args.arff
-        self.superb = args.superb
-        self.candidateDirectory = args.candDir
-        self.genProfileData = args.profile
-        self.processSingleCandidate = False
-        self.label = args.label
-        self.DM_PROFILE = args.dmprof
+        # Initialise variables with command line parameters.
+        genProfileData = profile
+        processSingleCandidate = False
         
         # Helper files.
-        utils = Utilities.Utilities(self.debug)
-        dp = DataProcessor.DataProcessor(self.debug)
+        utils = Utilities.Utilities(verbose)
+        dp = DataProcessor.DataProcessor(verbose)
         
         # Process -s argument if provided, make sure file the user
         # want to write to exists - otherwise we default to 
         # writing candidates to separate files.
-        if(utils.fileExists(self.outputPath)):
-            self.singleFile = True
+        if(utils.fileExists(outputPath)):
+            singleFile = True
         else:
             try:
-                output = open(self.outputPath, 'w') # First try to create file.
+                output = open(outputPath, 'w') # First try to create file.
                 output.close()
             except IOError:
                 pass
             
             # Now check again if it exists.
-            if(utils.fileExists(self.outputPath)):
-                self.singleFile = True
+            if(utils.fileExists(outputPath)):
+                singleFile = True
             else:
-                self.singleFile = False # Must be an invalid path.
+                singleFile = False # Must be an invalid path.
         
         # Process -c argument if provided, make sure directory containing
         # the candidates the user wants to process exists - otherwise we default to 
         # looking for candidates in the local directory. 
-        if(utils.dirExists(self.candidateDirectory)):
-            self.searchLocalDirectory = False
-        elif(utils.fileExists(self.candidateDirectory)):
-            self.searchLocalDirectory = False
-            self.processSingleCandidate = True
+        if(utils.dirExists(candDir)):
+            searchLocalDirectory = False
+        elif(utils.fileExists(candDir)):
+            searchLocalDirectory = False
+            processSingleCandidate = True
         else:
-            self.searchLocalDirectory = True
+            searchLocalDirectory = True
             
         # We have to determine the directory we would like to process. 
-        if(self.searchLocalDirectory):
-            self.search = ""
-        elif(self.processSingleCandidate==False):
+        if(searchLocalDirectory):
+            search = ""
+        elif(processSingleCandidate==False):
             # We add a / here as the method we call next will then search the directory
-            # by appending either *.pfd or *.phcx.gz. Without the additional / we would
+            # by appending *.pfd. Without the additional / we would
             # only look for directories that end with .pfd etc.
-            self.search = self.candidateDirectory+"/"
-        elif(self.processSingleCandidate==True):
-            self.search = self.candidateDirectory
+            search = candDir+"/"
+        elif(processSingleCandidate==True):
+            search = candDir
             
         print("\n***********************************")
         print("| Executing score generation code |")
         print("***********************************")
         print("\tCommand line arguments:")
-        print("\tDebug:",self.debug)
-        print("\tWrite to single file:",self.singleFile)
-        print("\tOutput path:",self.outputPath)
-        print("\tExpect PFD files:",self.pfd)
-        print("\tExpect PHCX files:",self.phcx)
-        print("\tExpect SUPERB PHCX files:",self.superb)
-        print("\tProduce ARFF file:",self.arff)
-        print("\tCandidate directory:",self.candidateDirectory)
-        print("\tProcess single candidate:",self.processSingleCandidate)
-        print("\tLabel candidates:",self.label)
-        print("\tGenerate DM and profile stats as scores only:",self.DM_PROFILE)
-        print("\tSearch local directory:",self.searchLocalDirectory,"\n\n" )
+        print("\tDebug:",verbose)
+        print("\tWrite to single file:",singleFile)
+        print("\tOutput path:",outputPath)
+        print("\tExpect HDF5 files:",hdf5)
+        print("\tExpect PFD files:",pfd)
+        print("\tProduce ARFF file:",arff)
+        print("\tCandidate directory:",candDir)
+        print("\tProcess single candidate:",processSingleCandidate)
+        print("\tLabel candidates:",label)
+        print("\tGenerate DM and profile stats as scores only:",dmprof)
+        print("\tSearch local directory:",searchLocalDirectory)
         
-        
-        # Based on the command line parameters there multiple possible execution paths:
-        #
-        # 1. a) Generate candidate scores for phcx files, each candidate scores written to a separate file.
-        # 1. b) Generate candidate scores for phcx files, each candidate scores written to ONE file.
-        #
-        # 2. a) Generate candidate scores for pfd files, each candidate scores written to a separate file.
-        # 2. b) Generate candidate scores for pfd files, each candidate scores written to ONE file.
-        # 
-        # 3. a) Generate candidate scores for pfd AND phcx files, each candidate scores written to a separate file.
-        # 3. b) Generate candidate scores for pfd AND phcx files, each candidate scores written to ONE file.
-        # 
-        # 4. a) Generate candidate scores for SUPERB phcx files, each candidate score written to ONE file.
-        #
-        # 5. a) No details specified by user - look for pdf and phcx files and generate scores for them in separate files.
-        #
-        # So we need to implement each of these possible paths.
-        
-        # Path 0
-        if(self.label):
-            
-            if(self.phcx and not self.pfd and not self.superb):# label phcx
-                dp.labelPHCX(self.search, self.debug)
-            elif(not self.phcx and self.pfd): # label pfd
-                dp.labelPFD(self.search, self.debug)
+        if(label):
+            if(pfd):
+                dp.labelPFD(search, verbose)
                 
-        elif(self.DM_PROFILE):
-            
-            if(self.phcx and not self.pfd and not self.superb):# label phcx
-                dp.dmprofPHCX(self.search, self.debug,self.outputPath,self.arff,self.processSingleCandidate)
-            elif(not self.phcx and self.pfd and not self.superb): # label pfd
-                dp.dmprofPFD(self.search, self.debug,self.outputPath,self.arff,self.processSingleCandidate)
-            elif(not self.phcx and not self.pfd and self.superb): # label pfd
-                dp.dmprofSUPERB(self.search, self.debug,self.outputPath,self.arff,self.processSingleCandidate)
-        # Path 1
-        elif(self.phcx and not self.pfd and not self.superb):
-            # Path 1. a)
-            if(not self.singleFile):
-                # Process phcx files, written to separate files
-                print("Processing .phcx files and writing their scores to separate files.")
-                dp.processPHCXSeparately(self.search,self.debug,self.processSingleCandidate)
-                
-            # Path 1. b)
-            else:
-                # Process phcx files, written to single file.
-                print("Processing .phcx files and writing their scores to: ",self.outputPath)
-                dp.processPHCXCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
-                
-        # Path 2
-        elif(not self.phcx and self.pfd and not self.superb):
-            # Path 2. a)
-            if(not self.singleFile):
-                # Process pfd files, written to separate files.
+        elif(dmprof):
+            if(hdf5):
+                dp.dmprofHDF5(search, verbose,outputPath,arff,processSingleCandidate)
+            elif(pfd):
+                dp.dmprofPFD(search, verbose,outputPath,arff,processSingleCandidate)
+        elif(pfd):
+            if(not singleFile):
                 print("Processing .pfd files and writing their scores to separate files.")
-                dp.processPFDSeparately(self.search,self.debug,self.processSingleCandidate)
-                
-            # Path 2. b)
+                dp.processPFDSeparately(search,verbose,processSingleCandidate)
             else:
-                # Process pfd files, written to single file.
-                print("Processing .pfd files and writing their scores to: ",self.outputPath)
-                dp.processPFDCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
-                
-        # Path 3
-        elif(self.phcx and self.pfd and not self.superb):
-            # Path 3. a)
-            if(not self.singleFile):
-                # Process pfd and phcx files, written to separate files.
-                print("Processing .pfd AND .phcx files and writing their scores to separate files.")
-                dp.processPFDAndPHCXSeparately(self.search,self.debug,self.processSingleCandidate)
-                
-            # Path 3. b)
-            else:
-                # Process pfd and phcx files, written to a single file.
-                print("Processing .pfd AND .phcx  files and writing their scores to: ",self.outputPath)
-                dp.processPFDAndPHCXCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
-        
-        # Path 4. a)
-        elif(self.superb and not self.pfd and not self.phcx):
-            print("Processing SUPERB .phcx  files and writing their scores to: ",self.outputPath)
-            dp.processSUPERBCollectively(self.search,self.debug,self.outputPath,self.arff,self.genProfileData,self.processSingleCandidate)
-            
-        # Path 5
-        elif(not self.phcx and not self.pfd):
-            if(not self.singleFile):
-                dp.processPFDAndPHCXSeparately(self.search,self.debug,self.processSingleCandidate)
-            else:
-                dp.processPFDAndPHCXCollectively(self.search,self.debug,self.outputPath,self.genProfileData,self.processSingleCandidate)
-        
+                print("Processing .pfd files and writing their scores to: ",outputPath)
+                dp.processPFDCollectively(search,verbose,outputPath,arff,genProfileData,processSingleCandidate)
         else:
-            print("Didn't know what to do with your input.")
+            print("Don't know what to do with your input.")
 
         print("Done.")
 
     # ****************************************************************************************************
       
 if __name__ == '__main__':
-    ScoreGenerator().main()
+    app()

@@ -15,9 +15,8 @@ By Rob Lyon <robert.lyon@cs.man.ac.uk>
 """
 
 # Custom Imports
-# import PHCXFile as phcx
+from HDF5File import HDF5
 import PFDFile as pfd
-import SUPERBPHCXFile as superb
 
 # ****************************************************************************************************
 #
@@ -28,7 +27,6 @@ import SUPERBPHCXFile as superb
 class Candidate:
     """
     Represents a pulsar candidate. This class is used both to generate scores.
-    
     """
     
     # ****************************************************************************************************
@@ -103,8 +101,7 @@ class Candidate:
         """
         Calculates the scores for this candidate. If the file name of
         this Candidate object contains .pfd, then the PFD file score generation
-        code will be executed. Likewise if the file name ends in phcx, then
-        PHCX file score generation code will be executed.
+        code will be executed.
         
         If further data file formats need to be processed, then changes need
         to be made here to cope with them. For example, if a new file format
@@ -124,16 +121,8 @@ class Candidate:
             c = pfd.PFD(verbose,self.candidateName)
             self.scores = c.compute()
             return self.scores
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = c.compute()
-            return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
-            c = superb.SUPERBPHCX(verbose,self.candidateName)
-            self.scores = c.compute()
-            return self.scores
+            return []
     
     # ****************************************************************************************************
         
@@ -141,8 +130,7 @@ class Candidate:
         """
         Calculates the scores as profile data for this candidate. If the file name of
         this Candidate object contains .pfd, then the PFD file score generation
-        code will be executed. Likewise if the file name ends in phcx, then
-        PHCX file score generation code will be executed.
+        code will be executed.
         
         If further data file formats need to be processed, then changes need
         to be made here to cope with them. For example, if a new file format
@@ -162,23 +150,14 @@ class Candidate:
             c = pfd.PFD(verbose,self.candidateName)
             self.scores = c.computeProfileScores()
             return self.scores
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = c.computeProfileScores()
-            return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
-            c = superb.SUPERBPHCX(verbose,self.candidateName)
-            self.scores = c.computeProfileScores()
-            return self.scores
+            return []
     
     def calculateProfileStatScores(self,verbose):
         """
         Calculates the stat scores of profile data for this candidate. If the file name of
         this Candidate object contains .pfd, then the PFD file score generation
-        code will be executed. Likewise if the file name ends in phcx, then
-        PHCX file score generation code will be executed.
+        code will be executed.
         
         If further data file formats need to be processed, then changes need
         to be made here to cope with them. For example, if a new file format
@@ -193,25 +172,15 @@ class Candidate:
         The candidate scores as an array of floats.
         """
         
-        if(".pfd" in self.candidateName):
-            #print "Computing PFD scores."
+        if(".h5" in self.candidateName):
+            c = HDF5(self.candidateName)
+            self.scores = c.computeProfileStatScores()
+            return self.scores
+        elif(".pfd" in self.candidateName):
             c = pfd.PFD(verbose,self.candidateName)
-            self.scores = [] # Clear any existing data
             self.scores = c.computeProfileStatScores()
             return self.scores
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = [] # Clear any existing data
-            self.scores = c.computeProfileStatScores()
-            return self.scores
-        else:
-            #print "Computing SUPERB PHCX scores."
-            c = superb.SUPERBPHCX(verbose,self.candidateName)
-            self.scores = [] # Clear any existing data
-            self.scores = c.computeProfileStatScores()
-            return self.scores
-    
+
     # ****************************************************************************************************
         
     def getDMCurveData(self,verbose):
@@ -227,17 +196,10 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            #print "Computing PFD scores."
             c = pfd.PFD(verbose,self.candidateName)
             self.scores = c.getDMCurveData()
             return self.scores
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = c.getDMCurveData()
-            return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
             return []
         
     def calculateDMCurveStatScores(self,verbose):
@@ -252,20 +214,15 @@ class Candidate:
         The DM curve data as an array of floats.
         """
         
-        if(".pfd" in self.candidateName):
-            #print "Computing PFD scores."
-            c = pfd.PFD(verbose,self.candidateName)
-            self.scores = [] # Clear any existing data
+        if(".h5" in self.candidateName):
+            c = HDF5(self.candidateName)
             self.scores = c.computeDMCurveStatScores()
             return self.scores
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = [] # Clear any existing data
+        elif(".pfd" in self.candidateName):
+            c = pfd.PFD(verbose,self.candidateName)
             self.scores = c.computeDMCurveStatScores()
             return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
             return []
         
     # ****************************************************************************************************
@@ -283,15 +240,8 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            #print "Computing PFD scores."
             return []
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = c.getSubbandData()
-            return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
             return []
     
     # ****************************************************************************************************
@@ -309,15 +259,8 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            #print "Computing PFD scores."
             return []
-        elif(".gz" in self.candidateName):
-            #print "Computing PHCX scores."
-            c = phcx.PHCX(verbose,self.candidateName)
-            self.scores = c.getSubintData()
-            return self.scores
         else:
-            #print "Computing SUPERB PHCX scores."
             return []
         
     # ****************************************************************************************************
@@ -528,4 +471,3 @@ class Candidate:
         """
             
         return self.candidateName + "," + self.candidatePath
-    

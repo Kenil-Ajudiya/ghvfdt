@@ -15,18 +15,12 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
 
 # Standard library Imports:
 import sys,os,fnmatch,datetime
-
 from numpy import array
 from numpy import concatenate
 
 # Custom file Imports:
 import Utilities
 import Candidate
-
-# from PIL import Image
-# import Image
-# import matplotlib.pyplot as plt
-# import matplotlib.image as mpimg
 
 # ****************************************************************************************************
 #
@@ -35,9 +29,8 @@ import Candidate
 # ****************************************************************************************************
 
 class DataProcessor(Utilities.Utilities):
-    """                
+    """
     Searches for candidate files in the local directory, or a directory specified by the user.
-    
     """
     
     # ****************************************************************************************************
@@ -57,79 +50,17 @@ class DataProcessor(Utilities.Utilities):
                           during execution.
         """
         Utilities.Utilities.__init__(self,debugFlag)
-        self.phcxRegex = "*.phcx.gz" #
-        self.superbRegex = "*.phcx"  #
-        self.pfdRegex = "*.pfd"      # 
-        self.scoreStore = []         # Variable which stores the scores created for a candidate.
+        self.pfdRegex = "*.pfd"
+        self.hdf5Regex = "*.h5"
+        self.scoreStore = [] # Variable which stores the scores created for a candidate.
         self.candidateErrorLog="CandidateErrorLog.txt"
         self.arffCreated = False
         self.pfd = False
-        self.phcx = False
-        self.superb = False
         
         # Make sure error log exists.
         if(not self.fileExists(self.candidateErrorLog)):
             self.appendToFile(self.candidateErrorLog, "")
         
-    # ****************************************************************************************************
-        
-    def processPHCXSeparately(self,directory,verbose,processSingleCandidate):
-        """
-        Reads PHCX files in from a specified directory, and initiates
-        candidate score generation. Here the scores are written to 
-        separate files.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex]
-        self.processSeparately(directory, verbose, fileTypeRegexes,processSingleCandidate)
-    
-    # ****************************************************************************************************
-        
-    def processPHCXCollectively(self,directory,verbose,outPath,arff,genProfileData,processSingleCandidate):
-        """
-        Reads PHCX files in from a specified directory, and initiates
-        candidate score generation. Here scores are written to a single
-        candidate file.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        outPath      -    the path to write candidate scores to.
-        arff         -    flag that when true, indicates data should be written to an arff file.
-        genProfileData     -    flag which indicates that profile, rather than score data should be generated
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex]
-        self.processCollectively(directory, verbose, fileTypeRegexes,outPath,arff,genProfileData,processSingleCandidate)
-    
-    # ****************************************************************************************************
-        
-    def processSUPERBCollectively(self,directory,verbose,outPath,arff,genProfileData,processSingleCandidate):
-        """
-        Reads SUPERB survey PHCX files in from a specified directory, and initiates
-        candidate score generation. Here scores are written to a single candidate file.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        outPath      -    the path to write candidate scores to.
-        arff         -    flag that when true, indicates data should be written to an arff file.
-        genProfileData     -    flag which indicates that profile, rather than score data should be generated.
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.superb=True
-        fileTypeRegexes = [self.superbRegex]
-        self.processCollectively(directory, verbose, fileTypeRegexes,outPath,arff,genProfileData,processSingleCandidate)
-    
     # ****************************************************************************************************
     
     def processPFDSeparately(self,directory,verbose,processSingleCandidate):
@@ -167,67 +98,13 @@ class DataProcessor(Utilities.Utilities):
         """
         self.pfd=True
         fileTypeRegexes = [self.pfdRegex]
-        self.processCollectively(directory, verbose, fileTypeRegexes,outPath,arff,False,processSingleCandidate)
+        self.processCollectively(directory, verbose, fileTypeRegexes,outPath,arff,genProfileData,processSingleCandidate)
     
     # ****************************************************************************************************
-        
-    def processPFDAndPHCXSeparately(self,directory,verbose,processSingleCandidate):
-        """
-        Reads both PFD and PHCX files in from a specified directory,
-        and initiates candidate score generation. Here scores are
-        written to separate files.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        outPath      -    the path to write candidate scores to.
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.pfd=True
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex,self.pfdRegex]
-        self.processSeparately(directory, verbose, fileTypeRegexes,processSingleCandidate)
-    
-    # ****************************************************************************************************
-        
-    def processPFDAndPHCXCollectively(self,directory,verbose,outPath,arff,genProfileData,processSingleCandidate):
-        """
-        Reads both PFD and PHCX files in from a specified directory,
-        and initiates candidate score generation. Here scores are written
-        to a single candidate file.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        outPath      -    the path to write candidate scores to.
-        arff         -    flag that when true, indicates data should be written to an arff file.
-        genProfileData     -    flag which indicates that profile, rather than score data should be generated
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.pfd=True
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex,self.pfdRegex]
-        self.processCollectively(directory, verbose, fileTypeRegexes,outPath,arff,False,processSingleCandidate)
-    
-    # ****************************************************************************************************
-        
-    def labelPHCX(self,directory,verbose):
-        """
-        Allows the user to label PHCX data.
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        """
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex]
-        self.label(directory, verbose, fileTypeRegexes)
         
     def labelPFD(self,directory,verbose,outPath,arff,genProfileData,processSingleCandidate):
         """
-        Allows the user to label PHCX data.
+        Allows the user to label PFD data.
         
         Parameters:
         directory    -    the directory to look for candidates in.
@@ -237,7 +114,7 @@ class DataProcessor(Utilities.Utilities):
         fileTypeRegexes = [self.pfdRegex]
         self.label(directory, verbose, fileTypeRegexes)
         
-    def dmprofPHCX(self,directory,verbose,outPath,arff,processSingleCandidate):
+    def dmprofHDF5(self,directory,verbose,outPath,arff,processSingleCandidate):
         """
         Generates DM and profile stat scores (no 22 candidate scores).
         
@@ -249,10 +126,10 @@ class DataProcessor(Utilities.Utilities):
         processSingleCandidate - a flag that when true, indicates that only a single 
                                  specified candidate should be processed.
         """
-        self.phcx=True
-        fileTypeRegexes = [self.phcxRegex]
-        self.dmprof(directory, verbose, fileTypeRegexes,outPath,arff,processSingleCandidate)
-        
+        self.hdf5=True
+        fileTypeRegexes = [self.hdf5Regex]
+        self.dmprof(directory,verbose,fileTypeRegexes,outPath,arff,processSingleCandidate)
+
     def dmprofPFD(self,directory,verbose,outPath,arff,processSingleCandidate):
         """
         Generates DM and profile stat scores (no 22 candidate scores).
@@ -267,22 +144,6 @@ class DataProcessor(Utilities.Utilities):
         """
         self.pfd=True
         fileTypeRegexes = [self.pfdRegex]
-        self.dmprof(directory, verbose, fileTypeRegexes,outPath,arff,processSingleCandidate)
-        
-    def dmprofSUPERB(self,directory,verbose,outPath,arff,processSingleCandidate):
-        """
-        Generates DM and profile stat scores (no 22 candidate scores).
-        
-        Parameters:
-        directory    -    the directory to look for candidates in.
-        verbose      -    the verbose logging flag.
-        outPath      -    the path to write candidate scores to.
-        arff         -    flag that when true, indicates data should be written to an arff file.
-        processSingleCandidate - a flag that when true, indicates that only a single 
-                                 specified candidate should be processed.
-        """
-        self.superb=True
-        fileTypeRegexes = [self.superbRegex]
         self.dmprof(directory, verbose, fileTypeRegexes,outPath,arff,processSingleCandidate)
     
     # ****************************************************************************************************
@@ -331,11 +192,6 @@ class DataProcessor(Utilities.Utilities):
         
         # Default when dealing with only 22 scores plus class label.
         attributes = 23
-        
-        if(genProfileData and self.superb):
-            attributes=65 # SUPERB profile data has 64 bins, plus the class label.
-        elif(genProfileData and self.phcx):
-            attributes=129# HTRU profile data has 128 bins, plus the class label.
             
         for n in range(1, attributes):
             header += "@attribute Score"
@@ -850,10 +706,7 @@ class DataProcessor(Utilities.Utilities):
         
         if(processSingleCandidate == False):
             for filetype in fileTypeRegexes:
-                
                 for root, subFolders, filenames in os.walk(directory):
-                    
-                    
                     for filename in fnmatch.filter(filenames, filetype):
                         
                         cand = os.path.join(root, filename)
@@ -863,7 +716,6 @@ class DataProcessor(Utilities.Utilities):
                         #print "Processing candidate:\t" , cand
                         
                         try:
-                            
                             c = Candidate.Candidate(cand,str(directory+cand))
                             
                             profileStats = array(c.calculateProfileStatScores(self.debug))

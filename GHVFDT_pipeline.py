@@ -1,107 +1,203 @@
-# File path location. 
-pfd_path='/lustre_archive/spotlight/Kenil/ghvfdt/data' # Path of all pfd files for classification. It is required if scores=''
-scores='' # Keep scores='' if scores not available
-model='/lustre_archive/spotlight/Kenil/ghvfdt/GHRSS_models/GHRSS1-3.model' #Necessary
-
-# Use modules
-fp_nulling=True
-tp_nulling=True
-schan=True
-
-import os, glob
 import numpy as np
-from nulling import pfd_data, nullsnr
-from strongchan import snrcharm
+import psrchive
+import subprocess
+from pathlib import Path
+from cyclopts import App, Parameter
+from typing import Annotated
 
-current_path=os.getcwd()
-if(scores==''):
-    if os.path.exists('scores.arff'):
-        os.remove('scores.arff')
-    os.system('python CandidateScoreGenerators/ScoreGenerator.py -c ' + pfd_path + ' -o scores.arff --pfd --arff --dmprof')
-    scores=current_path+'/scores.arff'
+app = App("GH-VFDT Pipeline",
+          help="A pipeline to classify and filter pulsar candidates using GH-VFDT and various filters.",
+          version="1.0")
 
-if os.path.exists('predict.txt'):
-    os.remove('predict.txt')
-    os.remove('predict.txt.negative')
-os.system('java -jar ML.jar -v -m' + model + ' -o' + current_path + '/predict.txt -p' + scores + ' -a1') # No space between the option flags and their values.
+def make_PDF(files, output_pdf="Positive_Candidates.pdf"):
+    for pfd in files:
+        print(f"Generating PostScript for {pfd}...")
+        subprocess.run(f"show_pfd -noxwin {pfd}", shell=True, stdout=subprocess.DEVNULL)
 
-# Read GH-VFDT predict.txt and copy to pfd_select
-with open('predict.txt','r') as f:
-	lines=f.read()
+    subprocess.run(f"gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE={output_pdf} -dBATCH *.ps", shell=True, stdout=subprocess.DEVNULL)
+    
+    if output_pdf == "Filtered_Candidates.pdf":
+        subprocess.run("rm -r filtered", shell=True)
+        subprocess.run("mkdir -p filtered", shell=True)
+        subprocess.run("cp *.ps filtered", shell=True)
+    subprocess.run("rm -r *.pfd*", shell=True)
 
-# Copy pfd files from pfd_path to pfd_select in pipeline folder
-lines=lines.split('\n')[1:-1]
-files=[line.split(',')[0] for line in lines]
-os.system('rm -r pfd_select')
-os.system('mkdir pfd_select')
-for file in files:
-	os.system('cp ' + file + ' pfd_select/')
+def nosigbins(tp): # Finding the off pulse region using mean/rms ratio
+	bins=tp.shape[1]
+	offbins=[]
+	for i in range(bins):
+		d=tp[:,i]
+		mnrms=np.mean(d)/np.std(d)
+		if(mnrms<0.3): # Threshold for finding off-pulse region... change as required
+			offbins.append(i)
+	return offbins
 
-# Creating PDF files of ps files as ML_files.pdf
-pfds=glob.glob('pfd_select/*.pfd')
-os.system('rm -r *.pfd*')
-for pfd in pfds:
-	os.system('show_pfd -noxwin ' + pfd)
+def pfd_data(pfd):
+	var=psrchive.Archive_load(pfd)
+	var.dedisperse()
+	var.centre_max_bin()
+	var.remove_baseline()
+	return var.get_data()
 
-os.system('gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE=ML_files.pdf -dBATCH *.ps')
-os.system('rm -r *.pfd*')
+def nullsubint(tp): # Works for any 2D plot
+	offbins=nosigbins(tp)
+	subints=tp.shape[0]
+	for k in range(1,subints//2+1,1):
+		snrints=[]
+		for i in range(0,subints,k):
+			mbin=min(i+k,subints)
+			prof=tp[i:mbin,:]
+			prof=np.mean(prof,axis=0)
+			offreg=prof[offbins]
+			snrints.append(np.max(prof)/np.std(offreg))
+		if(max(snrints)<5):
+			print("Signal not found with subints "+str(k)+". Using "+str(k+1)+" subints")
+		else:
+			break
+	
+	if(max(snrints)<5):
+		print("Pulsar not detected in half sub-int range. Hence Nulling can not be detected")
+		null1=[]
+	else:
+		null=[]
+		for i in range(len(snrints)):
+			if(snrints[i]<np.mean(snrints)/2): # Nulling detection threshold
+				null.append(i)
+		null=np.array(null)*k
+		null1=[]
+		for i in null:
+			null1.append(i)
+			for j in range(1,k):
+				null1.append(i+j)
+	
+	null=np.copy(np.array(null1))
+	return null
 
-# Using filters
-pfd_dat=[pfd_data(pfd) for pfd in pfds]
-null_fp=[]
-null_tp=[]
-schan_rm=[]
-for j in range(len(pfd_dat)):
-	print(pfds[j])
-	i=pfd_dat[j]
-	fp=np.mean(i[:,0,:],axis=0)
+def calcsnr(tp):
+	offbins=nosigbins(tp)
+	profile=np.mean(tp,axis=0)
+	offreg=profile[offbins]
+	return np.max(profile)/np.std(offreg)
+
+def nullsnr(tp):
+	subints=tp.shape[0]
+	null=nullsubint(tp)
+	oppnull=[i for i in range(subints) if i not in null]
+	nullsnr=calcsnr(tp[oppnull,:])
+	return nullsnr
+
+def findchan(fp):
 	chans=fp.shape[0]
-	fp=fp[int(chans*0.1):-int(chans*0.1)]
-	tp=np.mean(i[:,0,:],axis=1)
-	snrfp=nullsnr(fp)
-	snrtp=nullsnr(tp)
-	snrschan=snrcharm(fp)
-	if(snrfp>4.0): # Threshold for fp nulling removed SNR
-		null_fp.append(pfds[j])
-	if(snrtp>4.0): # Threshold for tp nulling removed SNR
-		null_tp.append(pfds[j])
-	if(snrschan>4.0): # Threshold for Strong channel removed candidates SNR
-		schan_rm.append(pfds[j])
+	chanmean=[]
+	for i in range(chans):
+		chanmean.append(np.mean(fp[i,:]))
+	mx2md=np.max(chanmean)/abs(np.median(chanmean))
+	if(mx2md<50 or np.median(chanmean)):
+		return []
+	else:
+		return chanmean.index(np.max(chanmean))
 
-# Using combination of filters
-filtered=[]
-if(schan==False):
-	if(fp_nulling==True and tp_nulling==False):
-		filtered=null_fp
-	elif(fp_nulling==False and tp_nulling==True):
-		filtered=null_tp
-	elif(fp_nulling==True and tp_nulling==True):
-		for i in null_fp:
-			if i in null_tp:
-				filtered.append(i)
-else:
-	if(fp_nulling==True and tp_nulling==False):
-		for i in schan_rm:
-			if i in null_fp:
-				filtered.append(i)
-	elif(fp_nulling==False and tp_nulling==True):
-		for i in schan_rm:
-			if i in null_tp:
-				filtered.append(i)
-	elif(fp_nulling==True and tp_nulling==True):
-		for i in null_fp:
-			if i in null_tp:
-				if i in schan_rm:
-					filtered.append(i)
+def snrcharm(fp):
+	chans=fp.shape[0]
+	null=findchan(fp)
+	oppnull=[i for i in range(chans) if i not in null]
+	nullsnr=calcsnr(fp[oppnull,:])
+	return nullsnr
 
-# Creating filtered files PDF
-for pdf in filtered:
-	os.system('show_pfd -noxwin ' + pdf)
+@app.default
+def main(
+    data_dir: Annotated[str, Parameter(name=["--data_dir", "-p"], help="Path to the directory containing all the pfd files. It is required if scores are not provided.")] = "/lustre_archive/spotlight/Kenil/ghvfdt/data",
+    file_type: Annotated[str, Parameter(name=["--file_type", "-f"], help="Type of candidate files in the data directory. Options are pfd or hdf5")] = "hdf5",
+    scores_file: Annotated[Path, Parameter(name=["--scores_file", "-s"], help="Path to scores file. Scores are calculated and stored in scores.arff if not available.")] = Path(""),
+    model: Annotated[Path, Parameter(name=["--model", "-m"], help="Path to the trained GH-VFDT model")] = "/lustre_archive/spotlight/Kenil/ghvfdt/GHRSS_models/GHRSS1-3.model",
+    fp_nulling: Annotated[bool, Parameter(name=["--fp_nulling", "-fp"], help="Apply filter for nulling in frequency profile")] = False,
+    tp_nulling: Annotated[bool, Parameter(name=["--tp_nulling", "-tp"], help="Apply filter for nulling in time profile")] = False,
+    schan: Annotated[bool, Parameter(name=["--schan", "-sc"], help="Apply filter for strong channel removal")] = False,
+):
+    """
+    Run GH-VFDT pipeline.
+    Args:
+        pfd_dir (str): Path to the directory containing all the pfd files. It is required if scores are not provided.
+        scores_file (Path): Path to scores file. Scores are calculated and stored in scores.arff if not available.
+        model (Path): Path to the trained GH-VFDT model.
+        fp_nulling (bool): Apply filter for nulling in frequency profile.
+        tp_nulling (bool): Apply filter for nulling in time profile.
+        schan (bool): Apply filter for strong channel removal.
+    """
 
-os.system('gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE=filtered.pdf -dBATCH *.ps')
-os.system('rm -r filtered')
-os.system('mkdir -p filtered')
-os.system('cp *.ps filtered')
-os.system('rm -rf *.pfd*')
-if(len(lines)<2):
-	print("There were no positive candidates")
+    if not (file_type == "pfd" or file_type == "hdf5"):
+        raise ValueError("Invalid file_type. Choose either 'pfd' or 'hdf5'.")
+
+    repo_path=Path.cwd()
+    if not scores_file.is_file():
+        scores_file = repo_path / "scores.arff"
+        if scores_file.is_file():
+            scores_file.unlink()
+        subprocess.run(f"python CandidateScoreGenerators/ScoreGenerator.py -c {data_dir} -o {scores_file} --{file_type} --arff --dmprof", shell=True)
+
+    predict_path = repo_path / "predict.txt"
+    if predict_path.is_file():
+        predict_path.unlink()
+    print("\nGHVFDT Prediction Command:")
+    print(f"java -jar ML.jar -v -m{model} -o{predict_path} -p{scores_file} -a1\n") # No space between the option flags and their values.
+    subprocess.run(f"java -jar ML.jar -v -m{model} -o{predict_path} -p{scores_file} -a1", shell=True)
+    
+    # scores_file.unlink()
+    
+    # Read GH-VFDT predict.txt and make a PDF of all positive candidates.
+    with open(predict_path) as f:
+        files = [line.split(",")[0] for line in f][1:]
+
+    if file_type == "pfd":
+        make_PDF(files, output_pdf="Positive_Candidates.pdf")
+
+        if (fp_nulling or tp_nulling or schan):
+            # Apply filters
+            pfd_dat, null_fp, null_tp, schan_rm = [pfd_data(pfd) for pfd in files], [], [], []
+            for j in range(len(pfd_dat)):
+                i=pfd_dat[j]
+                fp=np.mean(i[:,0,:],axis=0)
+                chans=fp.shape[0]
+                fp=fp[int(chans*0.1):-int(chans*0.1)]
+                tp=np.mean(i[:,0,:],axis=1)
+                snrfp=nullsnr(fp)
+                snrtp=nullsnr(tp)
+                snrschan=snrcharm(fp)
+                if(snrfp>4.0): # Threshold for fp nulling removed SNR
+                    null_fp.append(files[j])
+                if(snrtp>4.0): # Threshold for tp nulling removed SNR
+                    null_tp.append(files[j])
+                if(snrschan>4.0): # Threshold for Strong channel removed candidates SNR
+                    schan_rm.append(files[j])
+
+            filtered=[]
+            if(schan==False):
+                if(fp_nulling==True and tp_nulling==False):
+                    filtered=null_fp
+                elif(fp_nulling==False and tp_nulling==True):
+                    filtered=null_tp
+                elif(fp_nulling==True and tp_nulling==True):
+                    for i in null_fp:
+                        if i in null_tp:
+                            filtered.append(i)
+            else:
+                if(fp_nulling==True and tp_nulling==False):
+                    for i in schan_rm:
+                        if i in null_fp:
+                            filtered.append(i)
+                elif(fp_nulling==False and tp_nulling==True):
+                    for i in schan_rm:
+                        if i in null_tp:
+                            filtered.append(i)
+                elif(fp_nulling==True and tp_nulling==True):
+                    for i in null_fp:
+                        if i in null_tp:
+                            if i in schan_rm:
+                                filtered.append(i)
+
+            make_PDF(filtered, output_pdf="Filtered_Candidates.pdf")
+    else:
+        print("PDF generation from hdf5 files is not supported yet.")
+
+if __name__ == "__main__":
+    app()

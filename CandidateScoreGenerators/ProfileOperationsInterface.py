@@ -1,6 +1,6 @@
 """
 This code runs on python 2.4 or later. Here we define an interface for the operations
-that can be run on profile data loaded in from phcx or pfd files.
+that can be run on profile data loaded in from pfd files.
 
 By Rob Lyon <robert.lyon@cs.man.ac.uk>
 

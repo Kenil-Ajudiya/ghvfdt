@@ -266,10 +266,9 @@ class PFD(CandidateFileInterface):
     def scale(self,data):
         """
         Scales the profile data for pfd files so that it is in the range 0-255.
-        This is the same range used in the phcx files. So  by performing this scaling
-        the scores for both type of candidates are directly comparable. Before it was
-        harder to determine if the scores generated for pfd files were working correctly,
-        since the phcx scores are our only point of reference. 
+        So  by performing this scaling the scores for both type of candidates are
+        directly comparable. Before it was harder to determine if the scores
+        generated for pfd files were working correctly.
         
         Parameter:
         data    -    the data to scale to within the 0-255 range.
@@ -501,7 +500,6 @@ class PFD(CandidateFileInterface):
             print("Error getting DM curve data from PFD file\n\t", sys.exc_info()[0])
             print(self.format_exception(e))
             raise Exception("DM curve extraction exception")
-            return []
     
     def computeProfileStatScores(self):
         """
@@ -532,7 +530,6 @@ class PFD(CandidateFileInterface):
             print("Error getting Profile stat scores from PFD file\n\t", sys.exc_info()[0])
             print(self.format_exception(e))
             raise Exception("Profile stat score extraction exception")
-            return []
     
     def computeDMCurveStatScores(self):
         """
@@ -564,7 +561,6 @@ class PFD(CandidateFileInterface):
             print("Error getting DM curve stat scores from PFD file\n\t", sys.exc_info()[0])
             print(self.format_exception(e))
             raise Exception("DM curve stat score extraction exception")
-            return []
         
     # ****************************************************************************************************
     

@@ -101,12 +101,11 @@ class PFDOperations(ProfileOperations):
         
         # Please note that the parameter passed in to this function is actually an
         # instance of the PFDFile class. This is done to keep the code similar for both
-        # PFD and PHCX files. However this means we may get confused when we see that
+        # PFD files. However this means we may get confused when we see that
         # the parameter passed in is called profile - this is the PFDFile object. Thus
         # to access the profile we must call profile.profile. I know this may seem
         # confusing, but it is done on purpose to ensure that the code in the PFDFile
-        # and PHCXFile scripts is as similar as possible. Despite the fact that these
-        # formats are very different.
+        # scripts is as similar as possible. Despite the fact that these formats are very different.
          
         # Score 12
         self.period = profile.bary_p1 *1000
@@ -227,7 +226,6 @@ class PFDOperations(ProfileOperations):
     def getDMCurveData(self,data):
         """
         Extracts the DM curve data from the PFD file.
-        
         """
         
         lodm = data.dms[0]
