@@ -28,22 +28,27 @@ from typing import Annotated
 
 # Custom file Imports:
 import Utilities
-import DataProcessor
+from DataProcessor import DataProcessor
 
 app = App("Candidate Score Generator",
           help="Generates scores for pulsar candidates from their HDF5 or PFD files.",
           version="1.0")
 
-# ******************************
-#
-# CLASS DEFINITION
-#
-# ******************************
-
-class ScoreGenerator:
+@app.default
+def main(
+    candDir: Annotated[str, Parameter(name=["--candDir", "-c"], help="Path to directory containing candidates")] = "",
+    outputPath: Annotated[str, Parameter(name=["--outputPath", "-o"], help="Path to write scores (file)")] = "scores.arff",
+    hdf5: Annotated[bool, Parameter(name=["--hdf5"], help="Process only .hdf5 files")] = False,
+    pfd: Annotated[bool, Parameter(name=["--pfd"], help="Process only .pfd files")] = False,
+    arff: Annotated[bool, Parameter(name=["--arff"], help="Write candidate data to ARFF")] = False,
+    profile: Annotated[bool, Parameter(name=["--profile"], help="Generate profile rather than score data")] = False,
+    label: Annotated[bool, Parameter(name=["--label"], help="Enable interactive candidate labelling")] = False,
+    dmprof: Annotated[bool, Parameter(name=["--dmprof"], help="Generate DM and profile summary stats")] = False,
+    verbose: Annotated[bool, Parameter(name=["--verbose", "-v"], help="Verbose debugging output")] = False,
+):
     """
     Generates 22 scores that describe the key features of pulsar candidate, from the
-    candidate's own hdf5 file. The scores generated are as follows:
+    candidate's own pfd or hdf5 file. The scores generated are as follows:
     
     Score number    Description of score                                                                                Group
         1            Chi squared value from fitting since curve to pulse profile.                                    Sinusoid Fitting
@@ -76,114 +81,91 @@ class ScoreGenerator:
         
     Check out Sam Bates' thesis for more information, "Surveys Of The Galactic Plane For Pulsars" 2011.
     """
+        
+    # Initialise variables with command line parameters.
+    genProfileData = profile
+    processSingleCandidate = False
     
-    # ******************************
-    #
-    # MAIN METHOD AND ENTRY POINT.
-    #
-    # ******************************
-
-    @app.default
-    def main(
-        candDir: Annotated[str, Parameter(name=["--candDir", "-c"], help="Path to directory containing candidates")] = "",
-        outputPath: Annotated[str, Parameter(name=["--outputPath", "-o"], help="Path to write scores (file)")] = "scores.arff",
-        hdf5: Annotated[bool, Parameter(name=["--hdf5"], help="Process only .hdf5 files")] = False,
-        pfd: Annotated[bool, Parameter(name=["--pfd"], help="Process only .pfd files")] = False,
-        arff: Annotated[bool, Parameter(name=["--arff"], help="Write candidate data to ARFF")] = False,
-        profile: Annotated[bool, Parameter(name=["--profile"], help="Generate profile rather than score data")] = False,
-        label: Annotated[bool, Parameter(name=["--label"], help="Enable interactive candidate labelling")] = False,
-        dmprof: Annotated[bool, Parameter(name=["--dmprof"], help="Generate DM and profile summary stats")] = False,
-        verbose: Annotated[bool, Parameter(name=["--verbose", "-v"], help="Verbose debugging output")] = False,
-    ):
-        """
-        Main entry point for the Application. Processes command line
-        input and begins creating the scores.
-        """
+    # Helper files.
+    utils = Utilities.Utilities(verbose)
+    dp = DataProcessor(verbose)
+    
+    # Process -s argument if provided, make sure file the user
+    # want to write to exists - otherwise we default to 
+    # writing candidates to separate files.
+    if(utils.fileExists(outputPath)):
+        singleFile = True
+    else:
+        try:
+            output = open(outputPath, 'w') # First try to create file.
+            output.close()
+        except IOError:
+            pass
         
-        # Initialise variables with command line parameters.
-        genProfileData = profile
-        processSingleCandidate = False
-        
-        # Helper files.
-        utils = Utilities.Utilities(verbose)
-        dp = DataProcessor.DataProcessor(verbose)
-        
-        # Process -s argument if provided, make sure file the user
-        # want to write to exists - otherwise we default to 
-        # writing candidates to separate files.
+        # Now check again if it exists.
         if(utils.fileExists(outputPath)):
             singleFile = True
         else:
-            try:
-                output = open(outputPath, 'w') # First try to create file.
-                output.close()
-            except IOError:
-                pass
-            
-            # Now check again if it exists.
-            if(utils.fileExists(outputPath)):
-                singleFile = True
-            else:
-                singleFile = False # Must be an invalid path.
+            singleFile = False # Must be an invalid path.
+    
+    # Process -c argument if provided, make sure directory containing
+    # the candidates the user wants to process exists - otherwise we default to 
+    # looking for candidates in the local directory. 
+    if(utils.dirExists(candDir)):
+        searchLocalDirectory = False
+    elif(utils.fileExists(candDir)):
+        searchLocalDirectory = False
+        processSingleCandidate = True
+    else:
+        searchLocalDirectory = True
         
-        # Process -c argument if provided, make sure directory containing
-        # the candidates the user wants to process exists - otherwise we default to 
-        # looking for candidates in the local directory. 
-        if(utils.dirExists(candDir)):
-            searchLocalDirectory = False
-        elif(utils.fileExists(candDir)):
-            searchLocalDirectory = False
-            processSingleCandidate = True
-        else:
-            searchLocalDirectory = True
-            
-        # We have to determine the directory we would like to process. 
-        if(searchLocalDirectory):
-            search = ""
-        elif(processSingleCandidate==False):
-            # We add a / here as the method we call next will then search the directory
-            # by appending *.pfd. Without the additional / we would
-            # only look for directories that end with .pfd etc.
-            search = candDir+"/"
-        elif(processSingleCandidate==True):
-            search = candDir
-            
-        print("\n***********************************")
-        print("| Executing score generation code |")
-        print("***********************************")
-        print("\tCommand line arguments:")
-        print("\tDebug:",verbose)
-        print("\tWrite to single file:",singleFile)
-        print("\tOutput path:",outputPath)
-        print("\tExpect HDF5 files:",hdf5)
-        print("\tExpect PFD files:",pfd)
-        print("\tProduce ARFF file:",arff)
-        print("\tCandidate directory:",candDir)
-        print("\tProcess single candidate:",processSingleCandidate)
-        print("\tLabel candidates:",label)
-        print("\tGenerate DM and profile stats as scores only:",dmprof)
-        print("\tSearch local directory:",searchLocalDirectory)
+    # We have to determine the directory we would like to process. 
+    if(searchLocalDirectory):
+        search = ""
+    elif(processSingleCandidate==False):
+        # We add a / here as the method we call next will then search the directory
+        # by appending *.pfd. Without the additional / we would
+        # only look for directories that end with .pfd etc.
+        search = candDir+"/"
+    elif(processSingleCandidate==True):
+        search = candDir
         
-        if(label):
-            if(pfd):
-                dp.labelPFD(search, verbose)
-                
-        elif(dmprof):
-            if(hdf5):
-                dp.dmprofHDF5(search, verbose,outputPath,arff,processSingleCandidate)
-            elif(pfd):
-                dp.dmprofPFD(search, verbose,outputPath,arff,processSingleCandidate)
+    print("\n***********************************")
+    print("| Executing score generation code |")
+    print("***********************************")
+    print("\tCommand line arguments:")
+    print("\tDebug:",verbose)
+    print("\tWrite to single file:",singleFile)
+    print("\tOutput path:",outputPath)
+    print("\tExpect HDF5 files:",hdf5)
+    print("\tExpect PFD files:",pfd)
+    print("\tProduce ARFF file:",arff)
+    print("\tCandidate directory:",candDir)
+    print("\tProcess single candidate:",processSingleCandidate)
+    print("\tLabel candidates:",label)
+    print("\tGenerate DM and profile stats as scores only:",dmprof)
+    print("\tSearch local directory:",searchLocalDirectory)
+    
+    if(label):
+        if(pfd):
+            dp.labelPFD(search, verbose)
+            
+    elif(dmprof):
+        if(hdf5):
+            dp.dmprofHDF5(search, verbose,outputPath,arff,processSingleCandidate)
         elif(pfd):
-            if(not singleFile):
-                print("Processing .pfd files and writing their scores to separate files.")
-                dp.processPFDSeparately(search,verbose,processSingleCandidate)
-            else:
-                print("Processing .pfd files and writing their scores to: ",outputPath)
-                dp.processPFDCollectively(search,verbose,outputPath,arff,genProfileData,processSingleCandidate)
+            dp.dmprofPFD(search, verbose,outputPath,arff,processSingleCandidate)
+    elif(pfd):
+        if(not singleFile):
+            print("Processing .pfd files and writing their scores to separate files.")
+            dp.processPFDSeparately(search,verbose,processSingleCandidate)
         else:
-            print("Don't know what to do with your input.")
+            print("Processing .pfd files and writing their scores to: ",outputPath)
+            dp.processPFDCollectively(search,verbose,outputPath,arff,genProfileData,processSingleCandidate)
+    else:
+        print("Don't know what to do with your input.")
 
-        print("Done.")
+    print("Done.")
 
     # ****************************************************************************************************
       

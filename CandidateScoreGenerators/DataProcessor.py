@@ -22,22 +22,10 @@ from numpy import concatenate
 import Utilities
 import Candidate
 
-# ****************************************************************************************************
-#
-# CLASS DEFINITION
-#
-# ****************************************************************************************************
-
 class DataProcessor(Utilities.Utilities):
     """
     Searches for candidate files in the local directory, or a directory specified by the user.
     """
-    
-    # ****************************************************************************************************
-    #
-    # Constructor.
-    #
-    # ****************************************************************************************************
     
     def __init__(self,debugFlag):
         """
@@ -712,8 +700,6 @@ class DataProcessor(Utilities.Utilities):
                         cand = os.path.join(root, filename)
                         
                         candidatesProcessed+=1
-                        
-                        #print "Processing candidate:\t" , cand
                         
                         try:
                             c = Candidate.Candidate(cand,str(directory+cand))

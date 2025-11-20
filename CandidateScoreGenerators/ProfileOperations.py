@@ -1,5 +1,6 @@
 """
-Contains implementations of the function used to generate scores.
+Contains implementations of the function used to generate scores. Here we also define an
+interface for the operations that can be run on profile data loaded in from pfd files.
 
 Rob Lyon <robert.lyon@cs.man.ac.uk>
 
@@ -108,37 +109,175 @@ Revision:8    Rob Lyon      Now take the absolute value of sigma,               
                                 
                             This change was to prevent errors caused by sigma
                             obtaining negative values.
-                             
 """
 
-# Numpy Imports:
-from numpy import array
-from numpy import ceil
-from numpy import argmax
-from numpy import delete
-from numpy import sin
-from numpy import pi
-from numpy import exp
-from numpy import sqrt
-from numpy import log
-from numpy import mean
-from numpy import histogram
-from numpy import corrcoef
-from numpy import append
-
+import numpy as np
 from scipy.optimize import leastsq
-from numpy import std
-
+from scipy import stats
 import matplotlib.pyplot as plt # Revision:1
 
 # Custom file Imports:
-from ProfileOperationsInterface import ProfileOperationsInterface
+from Utilities import Utilities
 
-# ****************************************************************************************************
-#
-# CLASS DEFINITION
-#
-# ****************************************************************************************************
+class ProfileOperationsInterface(Utilities):
+    """
+    Basically an interface that defines the functions which must be implemented in order
+    to produce candidate scores.
+    
+    If you want to create a new score generation method simply create a sub-class of this file,
+    and implement the required functions. This makes the code much more modular.
+    """
+    
+    def __init__(self,debugFlag):
+        Utilities.__init__(self,debugFlag)
+    
+    # ****************************************************************************************************
+    #
+    # Sinusoid Fittings
+    #
+    # ****************************************************************************************************
+    
+    def getSinusoidFittings(self,profile):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitSineSqr(self,yData,maxima):
+        raise NotImplementedError("Please Implement this method")
+    
+    # ****************************************************************************************************
+    #
+    # Gaussian Fittings
+    #
+    # ****************************************************************************************************
+    
+    def getGaussianFittings(self,profile):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitGaussian(self,xData,yData):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitGaussianFixedWidthBins(self,xData,yData,bins):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitGaussianWithBackground(self,xData,yData):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitGaussianT1(self,yData):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitDoubleGaussianT2(self,yData):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitDoubleGaussian(self,yData):
+        raise NotImplementedError("Please Implement this method")
+    
+    def fitDoubleGaussianWithBackground(self,yData,p0):
+        raise NotImplementedError("Please Implement this method")
+    
+    # ****************************************************************************************************
+    #
+    # Candidate Parameter Functions
+    #
+    # ****************************************************************************************************
+    
+    def getCandidateParameters(self,profile):
+        raise NotImplementedError("Please Implement this method")
+    
+    # ****************************************************************************************************
+    #
+    # DM Curve Fitting Functions
+    #
+    # ****************************************************************************************************
+    
+    def getDMFittings(self,data):
+        raise NotImplementedError("Please Implement this method")
+    
+    # ****************************************************************************************************
+    #
+    # Sub-band Functions
+    #
+    # ****************************************************************************************************
+    
+    def getSubbandParameters(self,data=None,profile=None):
+        raise NotImplementedError("Please Implement this method")
+    
+    # ****************************************************************************************************
+    #
+    # Utility Functions
+    #
+    # ****************************************************************************************************
+    
+    def freedmanDiaconisRule(self,data):
+        """
+        Calculate number of bins to use in histogram according to this rule.
+        
+        Parameters:
+        data    -    a numpy.ndarray containing the data for which a histogram is to be computed.
+        
+        Returns:
+        
+        The 'optimal' number of bins for the histogram.   
+        """
+        # interquartile range, Q3-Q1....
+        iqr = stats.scoreatpercentile(data, 75) - stats.scoreatpercentile(data, 25)
+        binwidth = 2 * iqr * pow(len(data), -0.3333333)
+        
+        if(binwidth<=0):
+            binwidth=60
+            
+        # calculate n bins
+        rnge = max(data) - min(data)
+        nbins = np.ceil( rnge / binwidth )
+        
+        if(self.debug):
+            print("\tIQR: ",iqr)
+            print("\tBin Width: ",binwidth)
+            print("\tRange: ",rnge)
+            print("\tNumber of bins: ", nbins)
+
+        return int(nbins)
+    
+    # ****************************************************************************************************
+    
+    def getDerivative(self,yData):
+        """
+        Obtains the derivative for the y data points by simply performing,
+        dy = y[i] - y[i+1] .
+        
+        Parameters:
+        yData    -    a numpy.ndarray containing data (y-axis data).
+        
+        Returns:
+        The changes in y, dy, for each point in yData as an array.
+        
+        """
+        dy = []
+        dataPoints = len(yData)-1 # Since there are n data points, with only n-1 line segments joining them.
+        for i in range(dataPoints):
+            dy.append(yData[i] - yData[i+1])
+        return dy
+    
+    # ****************************************************************************************************
+    
+    def scale(self,x,min_,max_,newMin,newMax):
+        """
+        Re-scales a data value occurring in the range min and max, the
+        a new data range given by newMin and newMax.
+        
+        Parameter:
+        x        -    the data value to rescale.
+        min_     -    the minimum value of the original data range for x.
+        max_     -    the maximum value of the original data range for x.
+        newMin   -    the minimum value of the new data range for x.
+        newMax   -    the maximum value of the new data range for x.
+        
+        Returns:
+        A new array with the data scaled to within the range [newMin,newMax].
+        """
+        
+        x = (newMin * (1-( (x-min_) /( max_-min_ )))) + (newMax * ( (x-min_) /( max_-min_ ) ))
+        return x
+    
+    # ****************************************************************************************************
 
 class ProfileOperations(ProfileOperationsInterface):
     """                
@@ -146,12 +285,6 @@ class ProfileOperations(ProfileOperationsInterface):
     a pulsar candidate.
     
     """
-    
-    # ****************************************************************************************************
-    #
-    # Constructor.
-    #
-    # ****************************************************************************************************
     
     def __init__(self,debugFlag):
         ProfileOperationsInterface.__init__(self,debugFlag)
@@ -289,7 +422,7 @@ class ProfileOperations(ProfileOperationsInterface):
                 
             else:              
                 if max(tempBinValues) != 0:# If there is a peak...
-                    peakIndexes.append(tempBinIndexes[argmax(tempBinValues)])
+                    peakIndexes.append(tempBinIndexes[np.argmax(tempBinValues)])
                     newProfile += list(tempBinValues)
                 
                 # Reset for next iteration.
@@ -299,7 +432,7 @@ class ProfileOperations(ProfileOperationsInterface):
         # If there are leftover bins not processed in the loop above...
         if (tempBinValues != []):
             if (max(tempBinValues) != 0):# If there is a peak...
-                peakIndexes.append(tempBinIndexes[argmax(tempBinValues)])
+                peakIndexes.append(tempBinIndexes[np.argmax(tempBinValues)])
                 newProfile += list(tempBinValues)# Add to the new profile.
         
         # The newProfile array will contain zero's at the start and end. This is
@@ -323,7 +456,7 @@ class ProfileOperations(ProfileOperationsInterface):
         #    diff = [ (2-1) , (3-2) , (4-3) , (5-4) , (6-5) ]
         #         = [ 1 , 1 , 1 , 1 , 1 ]
         if maxima > 0:
-            diff = delete(peakIndexes,0) - delete(peakIndexes,maxima-1)
+            diff = np.delete(peakIndexes,0) - np.delete(peakIndexes,maxima-1)
         else:
             diff = []
         
@@ -370,7 +503,7 @@ class ProfileOperations(ProfileOperationsInterface):
         """
         
         # Obtain parameters for fitting.
-        xData = array(list(range(len(yData))))
+        xData = np.array(list(range(len(yData))))
         amplitude = abs( max(yData) - min(yData) ) / 2.
         frequency = float( maxima / (len(yData) - 1.) )
         # The background terms decides where the middle of the sine curve will be,
@@ -392,14 +525,14 @@ class ProfileOperations(ProfileOperationsInterface):
             # y = intensity in bin number x
             f, phi = paras
 
-            err = y - (abs(amp) * sin( 2 * pi * f * x + phi) + abs(bg))
+            err = y - (abs(amp) * np.sin( 2 * np.pi * f * x + phi) + abs(bg))
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras,amp,bg): # Revision:2b
             # Same variables as above.
             f, phi = paras
-            return abs(amp) * sin( 2 * pi * f * x + phi) + abs(bg)
+            return abs(amp) * np.sin( 2 * np.pi * f * x + phi) + abs(bg)
         
         if yData[0] == background:
             phi0 = 0
@@ -444,7 +577,7 @@ class ProfileOperations(ProfileOperationsInterface):
         # This section should be commented out when testing is completed.
         if(self.debug):
             ssErr = (infodict['fvec']**2).sum() # 'fvec' is an array of residuals. 
-            yData = array(yData)
+            yData = np.array(yData)
             ssTot = ((yData-yData.mean())**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
@@ -496,17 +629,17 @@ class ProfileOperations(ProfileOperationsInterface):
             # y = intensity in bin number x.
             f, phi = paras
 
-            err = y - (abs(amp) * pow ( sin ( 2 * pi * f * x + phi),2)) + abs(bg)
+            err = y - (abs(amp) * pow(np.sin(2 * np.pi * f * x + phi), 2)) + abs(bg)
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras,amp,bg): # Revision:3a
             # Same variables as above.
             f, phi = paras
-            return abs(amp) * pow ( sin ( 2 * pi * f * x + phi),2) + abs(bg)
+            return abs(amp) * pow(np.sin(2 * np.pi * f * x + phi), 2) + abs(bg)
         
         # Obtain parameters for fitting.
-        xData = array(list(range(len(yData))))
+        xData = np.array(list(range(len(yData))))
         #amplitude = max(yData)
         amplitude = abs( max(yData) - min(yData) ) / 2. # Revision:3b
         frequency = float( maxima / (len(yData) - 1.) / 2. )
@@ -542,7 +675,7 @@ class ProfileOperations(ProfileOperationsInterface):
         # This section should be commented out when testing is completed.
         if(self.debug):
             ssErr = (infodict['fvec']**2).sum() # 'fvec' is an array of residuals. 
-            ssTot = ((yData-mean(yData))**2).sum()
+            ssTot = ((yData-np.mean(yData))**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
             print("\n\tSine Squared fit to Pulse profile statistics:")
@@ -631,7 +764,7 @@ class ProfileOperations(ProfileOperationsInterface):
         self.histogramBins = self.freedmanDiaconisRule(profile)
         dy = self.getDerivative(profile)
         self.dy_histogramBins = self.freedmanDiaconisRule(dy)
-        histogram_dy = histogram(dy,self.dy_histogramBins) # Calculates a histogram of the derivative dy.
+        histogram_dy = np.histogram(dy,self.dy_histogramBins) # Calculates a histogram of the derivative dy.
         
         # Performs a gaussian fit on the derivative histogram.
         gaussianFitToDerivativeHistogram = self.fitGaussian(histogram_dy[1],histogram_dy[0])
@@ -645,14 +778,14 @@ class ProfileOperations(ProfileOperationsInterface):
         
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
-            hist, bins = histogram(dy,self.dy_histogramBins) # Calculates a histogram of the derivative.
+            hist, bins = np.histogram(dy,self.dy_histogramBins) # Calculates a histogram of the derivative.
             center = (bins[:-1] + bins[1:]) / 2
             plt.bar(center, hist, align='center')
             plt.title("Histogram of derivative dy")
             plt.show()
             
                 
-        histogram_profile = histogram(profile,self.histogramBins) # Calculates a histogram of the profile data.
+        histogram_profile = np.histogram(profile,self.histogramBins) # Calculates a histogram of the profile data.
                 
         # Performs a gaussian fit on the profile histogram.
         gaussianFitToProfileHistogram = self.fitGaussian(histogram_profile[1],histogram_profile[0])
@@ -666,7 +799,7 @@ class ProfileOperations(ProfileOperationsInterface):
             
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
-            hist, bins = histogram(profile,self.histogramBins) # Calculates a histogram of the profile.
+            hist, bins = np.histogram(profile,self.histogramBins) # Calculates a histogram of the profile.
             center = (bins[:-1] + bins[1:]) / 2
             plt.bar(center, hist, align='center')
             plt.title("Histogram of profile")
@@ -783,14 +916,14 @@ class ProfileOperations(ProfileOperationsInterface):
             # x = bin number.
             # y = intensity in bin number x.
             sigma, mu, maximum = paras
-            err = y - ( abs(maximum) * exp( (-((x - mu) / sigma )**2) / 2))
+            err = y - ( abs(maximum) * np.exp( (-((x - mu) / sigma )**2) / 2))
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras):
             # Same variables as above.
             sigma, mu, maximum = paras
-            return ( abs(maximum) * exp( (-((x - mu) / sigma )**2) / 2))
+            return ( abs(maximum) * np.exp( (-((x - mu) / sigma )**2) / 2))
         
         # Reverses the order of the list entries.
         def __mirror(_list):
@@ -805,11 +938,11 @@ class ProfileOperations(ProfileOperationsInterface):
         
         # Set up variables required to perfrom fit.
         _exit,counter = 0,0
-        indexOfLargestValue_xAxis = argmax(yData) # First index of largest value along x-axis (highest frequency).
+        indexOfLargestValue_xAxis = np.argmax(yData) # First index of largest value along x-axis (highest frequency).
         expect = xData[indexOfLargestValue_xAxis]
-        sigma = std(yData)
+        sigma = np.std(yData)
         maximum = max(yData)
-        meansq = mean(yData)**2
+        meansq = np.mean(yData)**2
         temp = yData
         
         #print "Index of largest value on x-axis:\t", indexOfLargestValue_xAxis
@@ -920,8 +1053,8 @@ class ProfileOperations(ProfileOperationsInterface):
             if(len(parameters)> len(xData)):
                 lengthDifference = len(parameters)-len(xData)
                 for i in range(0,lengthDifference):
-                    xData=append(xData,0)
-                    yData=append(yData,0)
+                    xData=np.append(xData,0)
+                    yData=np.append(yData,0)
                 
             leastSquaresParameters = leastsq(__residuals, parameters, args=(xData,yData))
             
@@ -931,7 +1064,7 @@ class ProfileOperations(ProfileOperationsInterface):
                 yData = temp
             """
                 
-            fwhm = abs(2 * sqrt(2 * log(2)) * leastSquaresParameters[0][0])
+            fwhm = abs(2 * np.sqrt(2 * np.log(2)) * leastSquaresParameters[0][0])
             fit = __evaluate(xData, leastSquaresParameters[0])
             
             # Compute Chi-squared value for fit.
@@ -946,8 +1079,8 @@ class ProfileOperations(ProfileOperationsInterface):
             """
             if (chisq > meansq * xDatalength) & (leastSquaresParameters[0][0] < 0.2 * xDatalength):    
                 counter += 1
-                temp = delete(temp,indexOfLargestValue_xAxis)
-                pos = argmax(temp)
+                temp = np.delete(temp,indexOfLargestValue_xAxis)
+                pos = np.argmax(temp)
                 expect = xData[pos+counter]
                 if counter > 5:
                     _exit += 1
@@ -997,14 +1130,14 @@ class ProfileOperations(ProfileOperationsInterface):
             # x = bin number.
             # y = intensity in bin number x.
             sigma, maximum = paras
-            err = y - ( abs(maximum) * exp( (-((x - xmax) / sigma )**2) / 2))
+            err = y - ( abs(maximum) * np.exp( (-((x - xmax) / sigma )**2) / 2))
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras, xmax):
             # Same variables as above.
             sigma, maximum = paras
-            return ( abs(maximum) * exp( (-((x - xmax) / sigma )**2) / 2))
+            return ( abs(maximum) * np.exp( (-((x - xmax) / sigma )**2) / 2))
         
         if xData == []:
             xData = list(range(len(yData)))
@@ -1012,7 +1145,7 @@ class ProfileOperations(ProfileOperationsInterface):
             xData = xData[0:-1]
         
         # Set up variables required to perfrom fit.
-        sigma = std(yData)
+        sigma = np.std(yData)
         maximum = max(yData)
         
         xmax = xData[int(bins/2)-1] # Made change here to ensure we start with centre bin.
@@ -1020,7 +1153,7 @@ class ProfileOperations(ProfileOperationsInterface):
         # perform fit ######
         parameters = [sigma, maximum]
         leastSquaresParameters = leastsq(__residuals, parameters, args=(xData,yData,xmax))
-        fwhm = abs(2 * sqrt( 2 * log(2) ) * leastSquaresParameters[0][0])
+        fwhm = abs(2 * np.sqrt( 2 * np.log(2) ) * leastSquaresParameters[0][0])
         fit = __evaluate(xData, leastSquaresParameters[0],xmax)
         
         # Chi-squared fit. Revision:5
@@ -1063,7 +1196,7 @@ class ProfileOperations(ProfileOperationsInterface):
         part1,part2 = [],[]
         yDataLength = len(yData)
         xData = list(range(yDataLength))
-        xmax = argmax(yData) # Finds index of max value in yData.
+        xmax = np.argmax(yData) # Finds index of max value in yData.
         
         # Check if maximum is near borders of the interval.
         
@@ -1080,7 +1213,7 @@ class ProfileOperations(ProfileOperationsInterface):
         
         nearBorder = False
         if (tempXmax < 15) or (tempXmax >= 112):   # If index of max value is near begining or end.
-            cut = int(ceil(yDataLength/2)) # Obtain midpoint.
+            cut = int(np.ceil(yDataLength/2)) # Obtain midpoint.
             part1 = yData[:cut]            # Part 1 contains 1st half of data.
             part2 = yData[cut:]            # Part 2 contains 2nd half of data.
             yData = list(part2)+list(part1)# Swap the parts around. This is done differently in the function fit_gaussian(self,xData,yData) in this file.
@@ -1125,7 +1258,7 @@ class ProfileOperations(ProfileOperationsInterface):
         
         part1,part2 = [],[]
         yDataLength = len(yData)
-        xmax = argmax(yData) # Finds index of max value in yData.
+        xmax = np.argmax(yData) # Finds index of max value in yData.
         
         # The original script was hardcoded to look for peaks in bins 0-15
         # and 112-128 - if the peak was here the data would be processed further.
@@ -1140,7 +1273,7 @@ class ProfileOperations(ProfileOperationsInterface):
         
         nearBorder = False
         if (tempXmax < 15) or (tempXmax >= 112):   # If index of max value is near begining or end.
-            cut = int(ceil(yDataLength/2)) # Obtain midpoint.
+            cut = int(np.ceil(yDataLength/2)) # Obtain midpoint.
             part1 = yData[:cut]            # Part 1 contains 1st half of data.
             part2 = yData[cut:]            # Part 2 contains 2nd half of data.
             yData = list(part2)+list(part1)# Swap the parts around. This is done differently in the function fit_gaussian(self,xData,yData) in this file.
@@ -1200,28 +1333,28 @@ class ProfileOperations(ProfileOperationsInterface):
             # bg = background term.
             
             sigma, mu, maximum, bg = paras
-            err = y - ( abs(maximum) * exp( (-((x - mu) / abs(sigma) )**2) / 2) + (bg) ) # Revision:8a
+            err = y - ( abs(maximum) * np.exp( (-((x - mu) / abs(sigma) )**2) / 2) + (bg) ) # Revision:8a
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras):
             # Same variables as above.
             sigma, mu, maximum, bg = paras
-            return ( abs(maximum) * exp( (-((x - mu) / abs(sigma) )**2) / 2) + (bg) ) # Revision:8b
+            return ( abs(maximum) * np.exp( (-((x - mu) / abs(sigma) )**2) / 2) + (bg) ) # Revision:8b
         
         ###### perform gaussian fit ######
         if xData == []:
             xData = list(range(len(yData)))
         
-        expect = argmax(yData)
+        expect = np.argmax(yData)
         maximum = yData[expect]
-        sigma = std(yData)
+        sigma = np.std(yData)
         bg = 1. 
         #mean(ydata) # Not sure why this was commented out?
         
         parameters = [sigma, expect, maximum, bg]
         leastSquaresParameters = leastsq(__residuals, parameters, args=(xData,yData))
-        fwhm = abs(2 * sqrt(2 * log(2)) * leastSquaresParameters[0][0])
+        fwhm = abs(2 * np.sqrt(2 * np.log(2)) * leastSquaresParameters[0][0])
         fit = __evaluate(xData, leastSquaresParameters[0])
         
         #print "\tSigma chosen: ",leastSquaresParameters[0][0]
@@ -1270,23 +1403,23 @@ class ProfileOperations(ProfileOperationsInterface):
             
             sigma, mu, maximum, bg = paras
             # Here sigma is zero?
-            err = y - ( abs(maximum) * exp( (-((x - mu) / sigma )**2) / 2) + abs(bg) )
+            err = y - ( abs(maximum) * np.exp( (-((x - mu) / sigma )**2) / 2) + abs(bg) )
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras):
             # Same variables as above.
             sigma, mu, maximum, bg = paras
-            return ( abs(maximum) * exp( (-((x - mu) / sigma )**2) / 2) + abs(bg) )
+            return ( abs(maximum) * np.exp( (-((x - mu) / sigma )**2) / 2) + abs(bg) )
         
         xData = list(range(len(yData)))
-        pos = argmax(yData) # indexOfLargestValue_xAxis
+        pos = np.argmax(yData) # indexOfLargestValue_xAxis
         newx,newy = xData,yData
         tolerance,limit = 0,5
         
         # Delete first peak.
-        newx = delete(newx,pos)
-        newy = delete(newy,pos)
+        newx = np.delete(newx,pos)
+        newy = np.delete(newy,pos)
         
         # I haven't understood how this part of the code works yet!
         # Once I've debugged it I will try and explain...
@@ -1294,36 +1427,36 @@ class ProfileOperations(ProfileOperationsInterface):
         while i < len(yData):
             if ((pos-i) > 0) & ((pos+i) < len(yData)):
                 if (yData[pos-i] < yData[pos-i+1]) & (yData[pos+i] < yData[pos+i-1]):
-                    newx = delete(newx,pos-i)
-                    newx = delete(newx,pos-i)
-                    newy = delete(newy,pos-i)
-                    newy = delete(newy,pos-i)
+                    newx = np.delete(newx,pos-i)
+                    newx = np.delete(newx,pos-i)
+                    newy = np.delete(newy,pos-i)
+                    newy = np.delete(newy,pos-i)
                 elif (yData[pos-i]  >= yData[pos-i+1]) or (yData[pos+i] >= yData[pos+i-1]) & (tolerance < limit):
-                    newx = delete(newx,pos-i)
-                    newx = delete(newx,pos-i)
-                    newy = delete(newy,pos-i)
-                    newy = delete(newy,pos-i)
+                    newx = np.delete(newx,pos-i)
+                    newx = np.delete(newx,pos-i)
+                    newy = np.delete(newy,pos-i)
+                    newy = np.delete(newy,pos-i)
                     tolerance += 1
                 else:
                     break
             elif ((pos-i) < 0):
                 if (yData[pos+i] < yData[pos+i-1]):
-                    newx = delete(newx,pos-i+1)
-                    newy = delete(newy,pos-i+1)
+                    newx = np.delete(newx,pos-i+1)
+                    newy = np.delete(newy,pos-i+1)
                 elif (yData[pos+i] >= yData[pos+i-1]) & (tolerance < limit):
-                    newx = delete(newx,pos-i+1)
-                    newy = delete(newy,pos-i+1)
+                    newx = np.delete(newx,pos-i+1)
+                    newy = np.delete(newy,pos-i+1)
                     tolerance += 1
                 else:
                     break
             
             elif ((pos+i) > len(yData)):
                 if (yData[pos-i] < yData[pos-i+1]):
-                    newx = delete(newx,pos-i+1)
-                    newy = delete(newy,pos-i+1)
+                    newx = np.delete(newx,pos-i+1)
+                    newy = np.delete(newy,pos-i+1)
                 elif (yData[pos-i]  >= yData[pos-i+1]) & (tolerance < limit):
-                    newx = delete(newx,pos-i)
-                    newy = delete(newy,pos-i)
+                    newx = np.delete(newx,pos-i)
+                    newy = np.delete(newy,pos-i)
                     tolerance += 1
                 else:
                     break
@@ -1335,11 +1468,11 @@ class ProfileOperations(ProfileOperationsInterface):
         while counter < 8:
             # New gaussian fit.
             debugCounter+=1
-            npos = argmax(newy)
+            npos = np.argmax(newy)
             nexpect = newx[npos]
-            nsigma = std(newy)
-            nmaximum = max(newy)
-            nbg = mean(newy)
+            nsigma = np.std(newy)
+            nmaximum =  max(newy)
+            nbg = np.mean(newy)
             
             np0 = [nsigma, nexpect, nmaximum, nbg]
             
@@ -1350,11 +1483,11 @@ class ProfileOperations(ProfileOperationsInterface):
             if(len(np0)> len(newx)):
                 lengthDifference = len(np0)-len(newx)
                 for i in range(0,lengthDifference):
-                    newx=append(newx,0)
-                    newy=append(newy,0)
+                    newx=np.append(newx,0)
+                    newy=np.append(newy,0)
                     
             plsq = leastsq(__residuals, np0, args=(newx,newy))
-            nfwhm = abs(2 * sqrt(2*log(2)) * plsq[0][0])
+            nfwhm = abs(2 * np.sqrt(2*np.log(2)) * plsq[0][0])
             nfit = __evaluate(newx, plsq[0])
             
             nchisq = 0
@@ -1385,7 +1518,7 @@ class ProfileOperations(ProfileOperationsInterface):
         p = list(store_p1) + list(store_p2)
         
         # Data arriving here not the same.
-        finalfit = self.fitDoubleGaussianWithBackground(yData,array(p))
+        finalfit = self.fitDoubleGaussianWithBackground(yData,np.array(p))
         
         fit1 = __evaluate(xData,store_p1)
         fit2 = __evaluate(xData,store_p2)
@@ -1396,8 +1529,8 @@ class ProfileOperations(ProfileOperationsInterface):
             if combifit[i] >= 1.:
                 combi_chisq += (yData[i]-combifit[i])**2/len(yData)
                 
-        combi_fwhm1 = abs(2 * sqrt(2*log(2)) * p[0])
-        combi_fwhm2 = abs(2 * sqrt(2*log(2)) * p[4])
+        combi_fwhm1 = abs(2 * np.sqrt(2*np.log(2)) * p[0])
+        combi_fwhm2 = abs(2 * np.sqrt(2*np.log(2)) * p[4])
         
         if (finalfit[2] <= combi_chisq):
             return finalfit
@@ -1433,23 +1566,23 @@ class ProfileOperations(ProfileOperationsInterface):
             # bg = background term.
             
             sigma1, mu1, maximum1, bg1, sigma2, mu2, maximum2, bg2 = paras
-            err = y - ((abs(maximum1) * exp((-((x - mu1) / abs(sigma1))**2) / 2)) +
-                       (abs(maximum2) * exp((-((x - mu2) / abs(sigma2))**2) / 2)) + (abs(bg1) + abs(bg2))/2)
+            err = y - ((abs(maximum1) * np.exp((-((x - mu1) / abs(sigma1))**2) / 2)) +
+                       (abs(maximum2) * np.exp((-((x - mu2) / abs(sigma2))**2) / 2)) + (abs(bg1) + abs(bg2))/2)
             return err
         
         # Evaluates the function.
         def __evaluate(x, paras):
             # Same variables as above.
             sigma1, mu1, maximum1, bg1, sigma2, mu2, maximum2, bg2 = paras
-            return ((abs(maximum1) * exp((-((x - mu1) / abs(sigma1))**2) / 2)) +
-                       (abs(maximum2) * exp((-((x - mu2) / abs(sigma2))**2) / 2)) + (abs(bg1) + abs(bg2))/2)
+            return ((abs(maximum1) * np.exp((-((x - mu1) / abs(sigma1))**2) / 2)) +
+                       (abs(maximum2) * np.exp((-((x - mu2) / abs(sigma2))**2) / 2)) + (abs(bg1) + abs(bg2))/2)
             
         xData = list(range(len(yData)))
         
         # Perform gaussian fit.
         leastSquaresParameters = leastsq(__residuals, p0, args=(xData,yData))
-        fwhm1 = abs(2 * sqrt(2*log(2)) * leastSquaresParameters[0][0])
-        fwhm2 = abs(2 * sqrt(2*log(2)) * leastSquaresParameters[0][4])
+        fwhm1 = abs(2 * np.sqrt(2*np.log(2)) * leastSquaresParameters[0][0])
+        fwhm2 = abs(2 * np.sqrt(2*np.log(2)) * leastSquaresParameters[0][4])
         fit = __evaluate(xData, leastSquaresParameters[0])
 
         chisq = 0
@@ -1577,7 +1710,7 @@ class ProfileOperations(ProfileOperationsInterface):
         
         """
         
-        width_bins = int(ceil(bestWidth*prof_bins))
+        width_bins = int(np.ceil(bestWidth*prof_bins))
         subband_sums = []
         
         # CALCULATE THE AMPLITUDES FOR EACH SUBBAND USING A BOX-CAR EQUAL TO THE PULSE WIDTH.
@@ -1607,7 +1740,7 @@ class ProfileOperations(ProfileOperationsInterface):
             max_bins.append(float(max_bin))
             max_sums.append(max_sum)
             
-        med = array(max_bins).mean()
+        med = np.array(max_bins).mean()
         
         # CHECK HOW CLOSE TO EACH OTHER ARE THE POSITIONS OF THE MAXIMA.
         
@@ -1633,7 +1766,7 @@ class ProfileOperations(ProfileOperationsInterface):
             
             var /= float(len(max_bins)-1)
             
-        stdev = sqrt(var)
+        stdev = np.sqrt(var)
         
         #  Linear correlation.
         # Correlates the amplitudes across the pulse between subbands pairs.
@@ -1646,7 +1779,7 @@ class ProfileOperations(ProfileOperationsInterface):
                 # A RuntimeWarning is raised here when subband_sums[i]
                 # and subband_sums[k] are completely empty. The code appears
                 #subband_sums[i] to execute normally despite the error.
-                cc = corrcoef(subband_sums[i], subband_sums[k])[0][1]
+                cc = np.corrcoef(subband_sums[i], subband_sums[k])[0][1]
                 if str(cc)=="nan":
                     k += 1
                 else:
@@ -1663,4 +1796,3 @@ class ProfileOperations(ProfileOperationsInterface):
         return rms, mean_corr
     
     # ******************************************************************************************
-    

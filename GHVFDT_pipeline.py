@@ -15,11 +15,6 @@ def make_PDF(files, output_pdf="Positive_Candidates.pdf"):
         subprocess.run(f"show_pfd -noxwin {pfd}", shell=True, stdout=subprocess.DEVNULL)
 
     subprocess.run(f"gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE={output_pdf} -dBATCH *.ps", shell=True, stdout=subprocess.DEVNULL)
-    
-    if output_pdf == "Filtered_Candidates.pdf":
-        subprocess.run("rm -r filtered", shell=True)
-        subprocess.run("mkdir -p filtered", shell=True)
-        subprocess.run("cp *.ps filtered", shell=True)
     subprocess.run("rm -r *.pfd*", shell=True)
 
 def nosigbins(tp): # Finding the off pulse region using mean/rms ratio
@@ -138,11 +133,14 @@ def main(
     predict_path = repo_path / "predict.txt"
     if predict_path.is_file():
         predict_path.unlink()
+    predict_neg_path = repo_path / "predict.txt.negative"
+    if predict_neg_path.is_file():
+        predict_neg_path.unlink()
     print("\nGHVFDT Prediction Command:")
     print(f"java -jar ML.jar -v -m{model} -o{predict_path} -p{scores_file} -a1\n") # No space between the option flags and their values.
     subprocess.run(f"java -jar ML.jar -v -m{model} -o{predict_path} -p{scores_file} -a1", shell=True)
     
-    # scores_file.unlink()
+    scores_file.unlink()
     
     # Read GH-VFDT predict.txt and make a PDF of all positive candidates.
     with open(predict_path) as f:
