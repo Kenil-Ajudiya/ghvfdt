@@ -4,18 +4,65 @@ import subprocess
 from pathlib import Path
 from cyclopts import App, Parameter
 from typing import Annotated
+from PIL import Image
+from riptide.pipelines import Candidate, CandidatePlot
 
 app = App("GH-VFDT Pipeline",
           help="A pipeline to classify and filter pulsar candidates using GH-VFDT and various filters.",
           version="1.0")
 
-def make_PDF(files, output_pdf="Positive_Candidates.pdf"):
-    for pfd in files:
-        print(f"Generating PostScript for {pfd}...")
-        subprocess.run(f"show_pfd -noxwin {pfd}", shell=True, stdout=subprocess.DEVNULL)
+def make_PDF(files, output_pdf="Positive_Candidates.pdf", file_type="hdf5"):
+    """
+    Make a single, multi-page PDF document of the candidate files.
 
-    subprocess.run(f"gs -dNOPAUSE -sDEVICE=pdfwrite -sOUTPUTFILE={output_pdf} -dBATCH *.ps", shell=True, stdout=subprocess.DEVNULL)
-    subprocess.run("rm -r *.pfd*", shell=True)
+    Arguments:
+    ----------
+    files : list
+        List of file paths to include in the PDF.
+    output_pdf : str
+        Output PDF file name.
+    file_type : str
+        Type of candidate files in the data directory. Options are pfd or hdf5.
+    -----------
+    """
+
+    files = [Path(file) for file in files]
+    repo_path = Path.cwd()
+    img_files: list[Path] = [repo_path / (file.name + ".png") for file in files]
+
+    if file_type == "hdf5":
+        for i in range(len(files)):
+            print(f"Generating PNG file for {files[i]}...")
+            candPlotObj = CandidatePlot(Candidate.load_hdf5(files[i]), figsize=(16, 5), dpi=80)
+            candPlotObj.saveimg(img_files[i])
+    else:
+        for pfd in files:
+            print(f"Generating PostScript for {pfd}...")
+            subprocess.run(f"show_pfd -noxwin {pfd}", shell=True, stdout=subprocess.DEVNULL)
+
+    # Collect images ensuring RGB mode (PDF pages must be RGB)
+    images: list[Image.Image] = []
+    for img_file in img_files:
+        if not img_file.exists():
+            print(f"Warning: image file missing and skipped: {img_file}")
+            continue
+        with Image.open(img_file) as img:
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            images.append(img.copy())  # copy so context manager can close
+
+    if not images:
+        print("No images available to write PDF.")
+    elif len(images) == 1:
+        images[0].save(output_pdf, format="PDF")
+    else:
+        images[0].save(output_pdf, format="PDF", save_all=True, append_images=images[1:])
+
+    if file_type == "pfd":
+        subprocess.run("rm -r *.pfd*", shell=True)
+    else:
+        for img_file in img_files:
+            img_file.unlink()
 
 def nosigbins(tp): # Finding the off pulse region using mean/rms ratio
 	bins=tp.shape[1]
@@ -111,7 +158,8 @@ def main(
 ):
     """
     Run GH-VFDT pipeline.
-    Args:
+    
+    Arguments:
         pfd_dir (str): Path to the directory containing all the pfd files. It is required if scores are not provided.
         scores_file (Path): Path to scores file. Scores are calculated and stored in scores.arff if not available.
         model (Path): Path to the trained GH-VFDT model.
@@ -147,7 +195,7 @@ def main(
         files = [line.split(",")[0] for line in f][1:]
 
     if file_type == "pfd":
-        make_PDF(files, output_pdf="Positive_Candidates.pdf")
+        make_PDF(files, output_pdf="Positive_Candidates.pdf", file_type=file_type)
 
         if (fp_nulling or tp_nulling or schan):
             # Apply filters
@@ -193,9 +241,9 @@ def main(
                             if i in schan_rm:
                                 filtered.append(i)
 
-            make_PDF(filtered, output_pdf="Filtered_Candidates.pdf")
+            make_PDF(filtered, output_pdf="Filtered_Candidates.pdf", file_type=file_type)
     else:
-        print("PDF generation from hdf5 files is not supported yet.")
+        make_PDF(files, output_pdf="Positive_Candidates.pdf", file_type=file_type)
 
 if __name__ == "__main__":
     app()
