@@ -111,12 +111,12 @@ Revision:8    Rob Lyon      Now take the absolute value of sigma,               
                             obtaining negative values.
 """
 
+import logging
 import numpy as np
 from scipy.optimize import leastsq
 from scipy import stats
 import matplotlib.pyplot as plt # Revision:1
 
-# Custom file Imports:
 from Utilities import Utilities
 
 class ProfileOperationsInterface(Utilities):
@@ -128,8 +128,9 @@ class ProfileOperationsInterface(Utilities):
     and implement the required functions. This makes the code much more modular.
     """
     
-    def __init__(self,debugFlag):
-        Utilities.__init__(self,debugFlag)
+    def __init__(self, debugFlag: bool, logger_name: str):
+        Utilities.__init__(self,debugFlag, logger_name)
+        self.logger = logging.getLogger(logger_name)
     
     # ****************************************************************************************************
     #
@@ -229,10 +230,10 @@ class ProfileOperationsInterface(Utilities):
         nbins = np.ceil( rnge / binwidth )
         
         if(self.debug):
-            print("\tIQR: ",iqr)
-            print("\tBin Width: ",binwidth)
-            print("\tRange: ",rnge)
-            print("\tNumber of bins: ", nbins)
+            self.logger.debug(f"\tIQR: {iqr}")
+            self.logger.debug(f"\tBin Width: {binwidth}")
+            self.logger.debug(f"\tRange: {rnge}")
+            self.logger.debug(f"\tNumber of bins: {nbins}")
 
         return int(nbins)
     
@@ -286,10 +287,11 @@ class ProfileOperations(ProfileOperationsInterface):
     
     """
     
-    def __init__(self,debugFlag):
-        ProfileOperationsInterface.__init__(self,debugFlag)
+    def __init__(self, debugFlag: bool, logger_name: str):
+        ProfileOperationsInterface.__init__(self, debugFlag, logger_name)
         # Set default bin width, won't be used since it is now dynamically recomputed.
         self.histogramBins = 60
+        self.logger = logging.getLogger(logger_name)
 
     # ****************************************************************************************************
     #
@@ -345,17 +347,17 @@ class ProfileOperations(ProfileOperationsInterface):
         profile_max = profile.max()
         profile_min = profile.min()
         
-        #print "mean:\t" , profile_mean
-        #print "min:\t" , profile_min
-        #print "max:\t" , profile_max
-        #print "std:\t" , profile_std
+        # self.logger.debug(f"mean:\t{%s}", profile_mean)
+        # self.logger.debug(f"min:\t{profile_min}")
+        # self.logger.debug(f"max:\t{profile_max}")
+        # self.logger.debug(f"std:\t{profile_std}")
 
         sumOverResiduals = 0
         
         # Calculate sum over residuals.
         for i in range( len(profile) ):
             sumOverResiduals += (abs( profile_max - profile_min ) / 2.)-profile[i]
-        #print "Sum Over Residuals:\t",sumOverResiduals
+        # self.logger.debug(f"Sum Over Residuals:\t{sumOverResiduals}")
         
         # Subtract background from profile. This is a type of feature scaling or
         # normalization of the data. I'm not sure why the standard score isn't calculated
@@ -369,7 +371,7 @@ class ProfileOperations(ProfileOperationsInterface):
             if normalisedProfile[i] < 0:
                 normalisedProfile[i] = 0
         
-        #print "Profile after normalization:\n",normalisedProfile
+        # self.logger.debug(f"Profile after normalization:\n{normalisedProfile}")
         
         # Find peaks in the normalized profile.
         # This code works by looking at small blocks of the normalized profile
@@ -476,7 +478,7 @@ class ProfileOperations(ProfileOperationsInterface):
                 
             i += 1 # Increment loop variable.
         
-        #print "Final Profile for Sine fitting:\n",finalProfile
+        # self.logger.debug(f"Final Profile for Sine fitting:\n{finalProfile}")
         
         # Perform fits to profile.
         # Divide chi-squared by maxima to reduce scores of data with many peaks.
@@ -569,10 +571,10 @@ class ProfileOperations(ProfileOperationsInterface):
         
         # Note leastSquaresParameters[0] contains the parameters of the fit obtained
         # by the least squares optimize call, [frequency,phi0,background].
-        #print "Least squares parameters:\n", leastSquaresParameters[0]# This is used if the area below (1) above is uncommented.
-        #print "Least squares parameters Full:\n", leastSquaresParameters
-        #print "Chi Squared:\n", chisq*pow(float(maxima),4)/100000000.  
-        #print "fit:\n", fit
+        #self.logger.debug(f"Least squares parameters:\n{leastSquaresParameters[0]}")# This is used if the area below (1) above is uncommented.
+        #self.logger.debug(f"Least squares parameters Full:\n{leastSquaresParameters}")
+        #self.logger.debug(f"Chi Squared:\n{chisq*pow(float(maxima),4)/100000000.}")  
+        #self.logger.debug(f"fit:\n{fit}")
         
         # This section should be commented out when testing is completed.
         if(self.debug):
@@ -581,14 +583,14 @@ class ProfileOperations(ProfileOperationsInterface):
             ssTot = ((yData-yData.mean())**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
-            print("\n\tSine fit to Pulse profile statistics:")
-            print("\tStandard Error: ", ssErr)
-            print("\tTotal Error: ", ssTot)
-            print("\tR-Squared: ", rsquared)
-            print("\tAmplitude: ",amplitude)
-            print("\tFrequency: ",str(leastSquaresParameters[0]))
-            print("\tPhi: ",str(leastSquaresParameters[1]))
-            print("\tBackground: ",background)
+            self.logger.debug("\tSine fit to Pulse profile statistics:")
+            self.logger.debug(f"\tStandard Error: {ssErr}")
+            self.logger.debug(f"\tTotal Error: {ssTot}")
+            self.logger.debug(f"\tR-Squared: {rsquared}")
+            self.logger.debug(f"\tAmplitude: {amplitude}")
+            self.logger.debug(f"\tFrequency: {leastSquaresParameters[0]}")
+            self.logger.debug(f"\tPhi: {leastSquaresParameters[1]}")
+            self.logger.debug(f"\tBackground: {background}")
             plt.plot(xData,yData,'o', xData, __evaluate(xData, leastSquaresParameters,amplitude,background))
             plt.title("Sine fit to Profile")
             plt.show()
@@ -667,9 +669,9 @@ class ProfileOperations(ProfileOperationsInterface):
         
         chisq /= len(yData)
         
-        #print "Least squares parameters:\n", leastSquaresParameters[0]
-        #print "Chi Squared:\n", chisq / pow(float(maxima),4)  
-        #print "fit:\n", fit
+        #self.logger.debug(f"Least squares parameters:\n{leastSquaresParameters[0]}")
+        #self.logger.debug(f"Chi Squared:\n{chisq / pow(float(maxima),4)}")  
+        #self.logger.debug(f"fit:\n{fit}")
         
         # Revision:3d
         # This section should be commented out when testing is completed.
@@ -678,13 +680,13 @@ class ProfileOperations(ProfileOperationsInterface):
             ssTot = ((yData-np.mean(yData))**2).sum()
             rsquared = 1-(ssErr/ssTot )
             
-            print("\n\tSine Squared fit to Pulse profile statistics:")
-            print("\tStandard Error: ", ssErr)
-            print("\tTotal Error: ", ssTot)
-            print("\tR-Squared: ", rsquared)
-            print("\tAmplitude: ",amplitude)
-            print("\tFrequency: ",str(leastSquaresParameters[0]))
-            print("\tPhi: ",str(leastSquaresParameters[1]))
+            self.logger.debug("\tSine Squared fit to Pulse profile statistics:")
+            self.logger.debug(f"\tStandard Error: {ssErr}")
+            self.logger.debug(f"\tTotal Error: {ssTot}")
+            self.logger.debug(f"\tR-Squared: {rsquared}")
+            self.logger.debug(f"\tAmplitude: {amplitude}")
+            self.logger.debug(f"\tFrequency: {leastSquaresParameters[0]}")
+            self.logger.debug(f"\tPhi: {leastSquaresParameters[1]}")
             plt.plot(xData,yData,'o', xData, __evaluate(xData, leastSquaresParameters,amplitude,background))
             plt.title("Sine Squared fit to Profile")
             plt.show()
@@ -759,7 +761,7 @@ class ProfileOperations(ProfileOperationsInterface):
         # is the number of bins used in the histogram by default.
         #histogram_dy = histogram(dy,60,new=True)
         #derivative_bins = ph.freedmanDiaconisRule(dy)
-        #print "Bins for derivative histogram: ",derivative_bins
+        # self.logger.info(f"Bins for derivative histogram: {derivative_bins}")
         
         self.histogramBins = self.freedmanDiaconisRule(profile)
         dy = self.getDerivative(profile)
@@ -770,11 +772,11 @@ class ProfileOperations(ProfileOperationsInterface):
         gaussianFitToDerivativeHistogram = self.fitGaussian(histogram_dy[1],histogram_dy[0])
         derivativeHistogram_sigma, derivativeHistogram_expect, derivativeHistogram_maximum = gaussianFitToDerivativeHistogram[0]
         
-        if(self.debug==True):
-            print("\n\tGaussian fit to Derivative Histogram details: ")
-            print("\tSigma of derivative histogram = ", derivativeHistogram_sigma)
-            print("\tMu of derivative histogram = ", derivativeHistogram_expect)
-            print("\tMax of derivative histogram = ", derivativeHistogram_maximum)
+        if(self.debug):
+            self.logger.debug("\tGaussian fit to Derivative Histogram details: ")
+            self.logger.debug(f"\tSigma of derivative histogram = {derivativeHistogram_sigma}")
+            self.logger.debug(f"\tMu of derivative histogram = {derivativeHistogram_expect}")
+            self.logger.debug(f"\tMax of derivative histogram = {derivativeHistogram_maximum}")
         
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
@@ -791,11 +793,11 @@ class ProfileOperations(ProfileOperationsInterface):
         gaussianFitToProfileHistogram = self.fitGaussian(histogram_profile[1],histogram_profile[0])
         profileHistogram_sigma, profileHistogram_expect, profileHistogram_maximum = gaussianFitToProfileHistogram[0]
         
-        if(self.debug==True):
-            print("\n\tGaussian fit to Profile Histogram details: " )
-            print("\tSigma of profile histogram = " , profileHistogram_sigma)
-            print("\tMu of profile histogram = "    , profileHistogram_expect)
-            print("\tMax of profile histogram = "   , profileHistogram_maximum)
+        if(self.debug):
+            self.logger.debug("\tGaussian fit to Profile Histogram details:")
+            self.logger.debug(f"\tSigma of profile histogram = {profileHistogram_sigma}")
+            self.logger.debug(f"\tMu of profile histogram = {profileHistogram_expect}")
+            self.logger.debug(f"\tMax of profile histogram = {profileHistogram_maximum}")
             
             # View histogram - for debugging only... uncomment matlibplot import at top if needed.
             
@@ -814,13 +816,13 @@ class ProfileOperations(ProfileOperationsInterface):
         gf_ProfileHistogram_fixed_chi  = gf_ProfileHistogram_fixed_Expect[2] 
         gf_ProfileHistogram_fixed_xmax = gf_ProfileHistogram_fixed_Expect[4]
         
-        if(self.debug==True):
-            print("\n\tGaussian fits to Profile Historgram with fixed Mu details:")
-            print("\tSigma of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_sigma)
-            print("\tMax of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_maximum)
-            print("\tFWHM of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_fwhm)
-            print("\tChi-squared of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_chi)
-            print("\txmax of Gaussian fit to Profile Historgram = ", gf_ProfileHistogram_fixed_xmax)
+        if(self.debug):
+            self.logger.debug("\tGaussian fits to Profile Historgram with fixed Mu details:")
+            self.logger.debug(f"\tSigma of Gaussian fit to Profile Historgram = {gf_ProfileHistogram_fixed_sigma}")
+            self.logger.debug(f"\tMax of Gaussian fit to Profile Historgram = {gf_ProfileHistogram_fixed_maximum}")
+            self.logger.debug(f"\tFWHM of Gaussian fit to Profile Historgram = {gf_ProfileHistogram_fixed_fwhm}")
+            self.logger.debug(f"\tChi-squared of Gaussian fit to Profile Historgram = {gf_ProfileHistogram_fixed_chi}")
+            self.logger.debug(f"\txmax of Gaussian fit to Profile Historgram = {gf_ProfileHistogram_fixed_xmax}")
         
         dexp_fix = abs(gf_ProfileHistogram_fixed_xmax - profileHistogram_expect)      # Score 5.
         amp_fix =  abs( gf_ProfileHistogram_fixed_maximum / profileHistogram_maximum) # Score 6.
@@ -903,8 +905,8 @@ class ProfileOperations(ProfileOperationsInterface):
         
         """
         
-        #print "xData (LENGTH=",len(xData),"):\n", xData
-        #print "yData (LENGTH=",len(yData),"):\n", yData
+        # self.logger.debug(f"xData (LENGTH={len(xData)}):\n{xData}")
+        # self.logger.debug(f"yData (LENGTH={len(yData)}):\n{yData}")
         
         # Calculates the residuals.
         def __residuals(paras, x, y):
@@ -945,11 +947,11 @@ class ProfileOperations(ProfileOperationsInterface):
         meansq = np.mean(yData)**2
         temp = yData
         
-        #print "Index of largest value on x-axis:\t", indexOfLargestValue_xAxis
-        #print "expect:\t", expect
-        #print "sigma:\t", sigma
-        #print "maximum:\t", maximum
-        #print "meansq:\t", meansq
+        # self.logger.debug(f"Index of largest value on x-axis:\t{indexOfLargestValue_xAxis}")
+        # self.logger.debug(f"expect:\t{expect}")
+        # self.logger.debug(f"sigma:\t{sigma}")
+        # self.logger.debug(f"maximum:\t{maximum}")
+        # self.logger.debug(f"meansq:\t{meansq}")
         
         # We are chopping off some the x-axis data here. This is because this function
         # is running on histogram data, i.e bin positions and frequncies. The xData array
@@ -1000,46 +1002,44 @@ class ProfileOperations(ProfileOperationsInterface):
         #      c) those 1 or more bins which share the same frequency as b are not in the same half of the data;
         #
         #      Then the other bins with the the shared max frequency will be discarded.
+
+        # self.logger.debug(f"xData length: {len(xData)}")
+        # self.logger.debug(f"xData: {xData}")
+        # self.logger.debug(f"yData length: {len(yData)}")
+        # self.logger.debug(f"yData: {yData}")
         
-        """
-        print "xData length:",len(xData)
-        print "xData:",xData
-        print "yData length:",len(yData)
-        print "yData:",yData
+        # part1,part2 = [],[]
+        # nearBorder = False
+        # if (indexOfLargestValue_xAxis == 0):# If the max value is at the begining.
+        #     cut = ceil(len(yData)/2)        # Find midpoint.
+        #     y_part1 = yData[:cut]             # Isolate first half of data.
+        #     y_part2 = __mirror(y_part1)         # Reverse the order of the first half of data.
+        #     yData = list(y_part2)+list(y_part1) # Data equals reversed data + first half of data.
+            
+        #     x_part1 = xData[:cut]             # Isolate first half of data.
+        #     x_part2 = __mirror(x_part1)         # Reverse the order of the first half of data.
+        #     xData = list(x_part2)+list(x_part1) # Data equals reversed data + first half of data.
+            
+        #     nearBorder = True
+            
+        # elif (indexOfLargestValue_xAxis == xDatalength-1):# If the max value is at the end.
+        #     cut = ceil(len(yData)/2)                     # Find midpoint.
+        #     y_part1 = yData[cut:]                          # Isolate second half of data.
+        #     y_part2 = __mirror(y_part1)                      # Reverse the order of the second half of data.
+        #     yData = list(y_part1)+list(y_part2)              # Data equals second half of data + reversed data.
+            
+        #     x_part1 = xData[cut:]                          # Isolate second half of data.
+        #     x_part2 = __mirror(x_part1)                      # Reverse the order of the second half of data.
+        #     xData = list(x_part1)+list(x_part2)              # Data equals second half of data + reversed data.
+            
+        #     nearBorder = True
         
-        part1,part2 = [],[]
-        nearBorder = False
-        if (indexOfLargestValue_xAxis == 0):# If the max value is at the begining.
-            cut = ceil(len(yData)/2)        # Find midpoint.
-            y_part1 = yData[:cut]             # Isolate first half of data.
-            y_part2 = __mirror(y_part1)         # Reverse the order of the first half of data.
-            yData = list(y_part2)+list(y_part1) # Data equals reversed data + first half of data.
-            
-            x_part1 = xData[:cut]             # Isolate first half of data.
-            x_part2 = __mirror(x_part1)         # Reverse the order of the first half of data.
-            xData = list(x_part2)+list(x_part1) # Data equals reversed data + first half of data.
-            
-            nearBorder = True
-            
-        elif (indexOfLargestValue_xAxis == xDatalength-1):# If the max value is at the end.
-            cut = ceil(len(yData)/2)                     # Find midpoint.
-            y_part1 = yData[cut:]                          # Isolate second half of data.
-            y_part2 = __mirror(y_part1)                      # Reverse the order of the second half of data.
-            yData = list(y_part1)+list(y_part2)              # Data equals second half of data + reversed data.
-            
-            x_part1 = xData[cut:]                          # Isolate second half of data.
-            x_part2 = __mirror(x_part1)                      # Reverse the order of the second half of data.
-            xData = list(x_part1)+list(x_part2)              # Data equals second half of data + reversed data.
-            
-            nearBorder = True
-        
-        print "post xData length:",len(xData)
-        print "post xData:",xData
-        print "post yData length:",len(yData)
-        print "post yData:",yData
-        print "Near border:",nearBorder
-        # SO HERE WE ARE GETTING UNEQUAL X AND Y DATA LENGTHS.
-        """
+        # self.logger.debug("post xData length:",len(xData))
+        # self.logger.debug("post xData:",xData)
+        # self.logger.debug("post yData length:",len(yData))
+        # self.logger.debug("post yData:",yData)
+        # self.logger.debug("Near border:",nearBorder)
+        # # SO HERE WE ARE GETTING UNEQUAL X AND Y DATA LENGTHS.
         
         # Perform the gaussian fit.       
         while _exit == 0:
@@ -1116,11 +1116,10 @@ class ProfileOperations(ProfileOperationsInterface):
             chisq - the chi-squared value of the fit.
             fit - the fit.
             xmax - the max expectation value.
-        
         """
         
-        #print "xData (LENGTH=",len(xData),"):\n", xData
-        #print "yData (LENGTH=",len(yData),"):\n", yData
+        # self.logger.debug(f"xData (LENGTH={len(xData)}):\n{xData}")
+        # self.logger.debug(f"yData (LENGTH={len(yData)}):\n{yData}")
         
         # Calculates the residuals.
         def __residuals(paras, x, y, xmax):
@@ -1322,8 +1321,8 @@ class ProfileOperations(ProfileOperationsInterface):
         
         """
         
-        #print "xData (LENGTH=",len(xData),"):\n", xData
-        #print "yData (LENGTH=",len(yData),"):\n", yData
+        # self.logger.debug(f"xData (LENGTH={len(xData)}):\n{xData}")
+        # self.logger.debug(f"yData (LENGTH={len(yData)}):\n{yData}")
         
         # Calculates the residuals.
         def __residuals(paras, x, y):
@@ -1357,10 +1356,10 @@ class ProfileOperations(ProfileOperationsInterface):
         fwhm = abs(2 * np.sqrt(2 * np.log(2)) * leastSquaresParameters[0][0])
         fit = __evaluate(xData, leastSquaresParameters[0])
         
-        #print "\tSigma chosen: ",leastSquaresParameters[0][0]
-        #print "\tMu chosen: ",leastSquaresParameters[0][1]
-        #print "\tMaximum chosen: ",leastSquaresParameters[0][2]
-        #print "\tbg chosen: ",leastSquaresParameters[0][3]
+        # self.logger.debug(f"\tSigma chosen: {leastSquaresParameters[0][0]}")
+        # self.logger.debug(f"\tMu chosen: {leastSquaresParameters[0][1]}")
+        # self.logger.debug(f"\tMaximum chosen: {leastSquaresParameters[0][2]}")
+        # self.logger.debug(f"\tbg chosen: {leastSquaresParameters[0][3]}")
         
         chisq = 0
         for i in range(len(yData)):
@@ -1391,8 +1390,8 @@ class ProfileOperations(ProfileOperationsInterface):
         # I think this code needs another cleaning pass, as its still hard
         # to understand in places.
         
-        #print "xData (LENGTH=",len(xData),"):\n", xData
-        #print "yData (LENGTH=",len(yData),"):\n", yData
+        # self.logger.debug(f"xData (LENGTH={len(xData)}):\n{xData}")
+        # self.logger.debug(f"yData (LENGTH={len(yData)}):\n{yData}")
         
         # Calculates the residuals.
         def __residuals(paras, x, y):
@@ -1493,7 +1492,7 @@ class ProfileOperations(ProfileOperationsInterface):
             nchisq = 0
             for i in range(len(newy)):
                 nchisq += (newy[i]-nfit[i])**2/len(newy)
-                #print "Entered My for loop: ", debugCounter+i
+                # self.logger.debug(f"Entered My for loop: {debugCounter+i}")
                 
             # Substraction to data.
             newy = []

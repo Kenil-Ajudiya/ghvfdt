@@ -22,17 +22,26 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
 
  Revision:0    Rob Lyon    Initial version of the re-written code.            05/02/2014
 """
-# Command Line processing Imports:
+
+import logging
 from cyclopts import App, Parameter
 from typing import Annotated
 
-# Custom file Imports:
-import Utilities
+from Utilities import Utilities, MultiColorFormatter
 from DataProcessor import DataProcessor
 
 app = App("Candidate Score Generator",
           help="Generates scores for pulsar candidates from their HDF5 or PFD files.",
           version="1.0")
+
+def configure_logger(name: str = "ML_classifier", level=logging.INFO) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    if not logger.handlers:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(MultiColorFormatter())
+        logger.addHandler(stream_handler)
+    return logger
 
 @app.default
 def main(
@@ -81,14 +90,15 @@ def main(
         
     Check out Sam Bates' thesis for more information, "Surveys Of The Galactic Plane For Pulsars" 2011.
     """
-        
+    logger_name = "ML_classifier"
+    logger = configure_logger(logger_name)
     # Initialise variables with command line parameters.
     genProfileData = profile
     processSingleCandidate = False
     
     # Helper files.
-    utils = Utilities.Utilities(verbose)
-    dp = DataProcessor(verbose)
+    utils = Utilities(verbose, logger_name)
+    dp = DataProcessor(verbose, logger_name)
     
     # Process -s argument if provided, make sure file the user
     # want to write to exists - otherwise we default to 
@@ -130,21 +140,21 @@ def main(
     elif(processSingleCandidate==True):
         search = candDir
         
-    print("\n***********************************")
-    print("| Executing score generation code |")
-    print("***********************************")
-    print("\tCommand line arguments:")
-    print("\tDebug:",verbose)
-    print("\tWrite to single file:",singleFile)
-    print("\tOutput path:",outputPath)
-    print("\tExpect HDF5 files:",hdf5)
-    print("\tExpect PFD files:",pfd)
-    print("\tProduce ARFF file:",arff)
-    print("\tCandidate directory:",candDir)
-    print("\tProcess single candidate:",processSingleCandidate)
-    print("\tLabel candidates:",label)
-    print("\tGenerate DM and profile stats as scores only:",dmprof)
-    print("\tSearch local directory:",searchLocalDirectory)
+    logger.info("***********************************")
+    logger.info("| Executing score generation code |")
+    logger.info("***********************************")
+    logger.info("\tCommand line arguments:")
+    logger.info(f"\tDebug:{verbose}")
+    logger.info(f"\tWrite to single file:{singleFile}")
+    logger.info(f"\tOutput path:{outputPath}")
+    logger.info(f"\tExpect HDF5 files:{hdf5}")
+    logger.info(f"\tExpect PFD files:{pfd}")
+    logger.info(f"\tProduce ARFF file:{arff}")
+    logger.info(f"\tCandidate directory:{candDir}")
+    logger.info(f"\tProcess single candidate:{processSingleCandidate}")
+    logger.info(f"\tLabel candidates:{label}")
+    logger.info(f"\tGenerate DM and profile stats as scores only:{dmprof}")
+    logger.info(f"\tSearch local directory:{searchLocalDirectory}")
     
     if(label):
         if(pfd):
@@ -152,20 +162,21 @@ def main(
             
     elif(dmprof):
         if(hdf5):
-            dp.dmprofHDF5(search, verbose,outputPath,arff,processSingleCandidate)
+            dp.dmprofHDF5(search, verbose, outputPath, arff, processSingleCandidate)
         elif(pfd):
-            dp.dmprofPFD(search, verbose,outputPath,arff,processSingleCandidate)
+            dp.dmprofPFD(search, verbose, outputPath, arff, processSingleCandidate)
     elif(pfd):
         if(not singleFile):
-            print("Processing .pfd files and writing their scores to separate files.")
-            dp.processPFDSeparately(search,verbose,processSingleCandidate)
+            logger.info("Processing .pfd files and writing their scores to separate files.")
+            dp.processPFDSeparately(search, verbose, processSingleCandidate)
         else:
-            print("Processing .pfd files and writing their scores to: ",outputPath)
-            dp.processPFDCollectively(search,verbose,outputPath,arff,genProfileData,processSingleCandidate)
+            logger.info(f"Processing .pfd files and writing their scores to: {outputPath}")
+            dp.processPFDCollectively(search, verbose, outputPath, arff, genProfileData, processSingleCandidate)
     else:
-        print("Don't know what to do with your input.")
+        logger.error("Don't know what to do with your input.")
+        exit(1)
 
-    print("Done.")
+    logger.info("Done.")
 
     # ****************************************************************************************************
       

@@ -13,8 +13,7 @@ By Rob Lyon <robert.lyon@cs.man.ac.uk>
  
  
 """
-
-# Custom Imports
+import logging
 from Utilities import Utilities
 # Some of the imports are deferred to post-definition of the CandidateFileInterface class to avoid
 # circular import issues.
@@ -27,7 +26,7 @@ class CandidateFileInterface(Utilities):
     inherits this interface. Then the new candidate file will be usable by this application.
     """
     
-    def __init__(self,debugFlag):
+    def __init__(self, debugFlag: bool, logger_name: str):
         """
         Default constructor.
         
@@ -37,7 +36,7 @@ class CandidateFileInterface(Utilities):
                           debugging messages will be printed to the terminal
                           during execution.
         """
-        Utilities.__init__(self,debugFlag)
+        Utilities.__init__(self, debugFlag, logger_name)
         self.numberOfScores = 22 # This is the default - can be set to other values.
         self.epsilon = 0.000005 # Used during score comparison.
     
@@ -183,7 +182,7 @@ class Candidate:
     Represents a pulsar candidate. This class is used both to generate scores.
     """
     
-    def __init__(self,name="Unknown",path=""):
+    def __init__(self, name="Unknown", path="", logger_name="ML_classifier"):
         """
         Represents an individual Pulsar candidate.
         
@@ -198,6 +197,7 @@ class Candidate:
         self.candidatePath = path # The full path to the candidate.
         self.scores = []          # Stores all candidate scores.
         self.label = "Unknown"    # The label this candidate has received, either "POSITIVE" or "NEGATIVE".
+        self.logger_name = logger_name
         
         # Some candidates may be 'special' in that they possess extreme
         # values for one of their scores. This could be a minimum or max
@@ -258,7 +258,7 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            c = PFD(verbose,self.candidateName)
+            c = PFD(verbose, self.candidateName, self.logger_name)
             self.scores = c.compute()
             return self.scores
         else:
@@ -286,7 +286,7 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            c = PFD(verbose,self.candidateName)
+            c = PFD(verbose, self.candidateName, self.logger_name)
             self.scores = c.computeProfileScores()
             return self.scores
         else:
@@ -312,11 +312,11 @@ class Candidate:
         """
         
         if(".h5" in self.candidateName):
-            c = HDF5(self.candidateName)
+            c = HDF5(self.candidateName, self.logger_name)
             self.scores = c.computeProfileStatScores()
             return self.scores
         elif(".pfd" in self.candidateName):
-            c = PFD(verbose,self.candidateName)
+            c = PFD(verbose, self.candidateName, self.logger_name)
             self.scores = c.computeProfileStatScores()
             return self.scores
 
@@ -335,7 +335,7 @@ class Candidate:
         """
         
         if(".pfd" in self.candidateName):
-            c = PFD(verbose,self.candidateName)
+            c = PFD(verbose, self.candidateName, self.logger_name)
             self.scores = c.getDMCurveData()
             return self.scores
         else:
@@ -354,11 +354,11 @@ class Candidate:
         """
         
         if(".h5" in self.candidateName):
-            c = HDF5(self.candidateName)
+            c = HDF5(self.candidateName, self.logger_name)
             self.scores = c.computeDMCurveStatScores()
             return self.scores
         elif(".pfd" in self.candidateName):
-            c = PFD(verbose,self.candidateName)
+            c = PFD(verbose, self.candidateName, self.logger_name)
             self.scores = c.computeDMCurveStatScores()
             return self.scores
         else:

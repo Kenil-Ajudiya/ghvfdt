@@ -13,21 +13,19 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
  
 """
 
-# Standard library Imports:
-import sys,os,fnmatch,datetime
+import sys,os,fnmatch,datetime, logging
 from numpy import array
 from numpy import concatenate
 
-# Custom file Imports:
-import Utilities
-import Candidate
+from Utilities import Utilities
+from Candidate import Candidate
 
-class DataProcessor(Utilities.Utilities):
+class DataProcessor(Utilities):
     """
     Searches for candidate files in the local directory, or a directory specified by the user.
     """
     
-    def __init__(self,debugFlag):
+    def __init__(self, debugFlag: bool, logger_name: str):
         """
         Default constructor.
         
@@ -37,7 +35,9 @@ class DataProcessor(Utilities.Utilities):
                           debugging messages will be printed to the terminal
                           during execution.
         """
-        Utilities.Utilities.__init__(self,debugFlag)
+        self.logger_name = logger_name
+        self.logger = logging.getLogger(logger_name)
+        Utilities.__init__(self, debugFlag, logger_name)
         self.pfdRegex = "*.pfd"
         self.hdf5Regex = "*.h5"
         self.scoreStore = [] # Variable which stores the scores created for a candidate.
@@ -311,7 +311,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print("User has not provided a search directory - searching local directory")
+            self.logger.info("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -327,11 +327,11 @@ class DataProcessor(Utilities.Utilities):
                         
                         candidatesProcessed+=1
                         
-                        #print "Processing candidate:\t" , cand
+                        # self.logger.info(f"Processing candidate:\t {cand}")
                         
                         try:
                             
-                            c = Candidate.Candidate(cand,str(directory+cand))
+                            c = Candidate(cand, str(directory+cand), self.logger_name)
                             
                             if(genProfileData):
                                 scores = c.calculateProfileScores(self.debug)
@@ -344,9 +344,9 @@ class DataProcessor(Utilities.Utilities):
                                 self.storeScore(cand, scores, outPath)
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print("Error reading profile data :\n\t", sys.exc_info()[0])
-                            print(self.format_exception(e))
-                            print(cand, " did not have scores generated.")
+                            self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                            self.logger.error(self.format_exception(e))
+                            self.logger.error(f"{cand} did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -355,7 +355,7 @@ class DataProcessor(Utilities.Utilities):
         else:
             singleCand = directory
             # Added to allow code to deal with a single candidate     
-            #print "Processing candidate:\t" , singleCand
+            # self.logger.info(f"Processing candidate:\t {singleCand}")
             candidatesProcessed+=1
             
             # If we have a file containing paths to candidates.
@@ -370,7 +370,7 @@ class DataProcessor(Utilities.Utilities):
                     for line in lines:
                 
                         try:
-                            c = Candidate.Candidate(line,line)
+                            c = Candidate(line, line, self.logger_name)
                             
                             if(genProfileData):
                                 scores = c.calculateProfileScores(self.debug)
@@ -385,15 +385,15 @@ class DataProcessor(Utilities.Utilities):
                             successes+=1
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print("Error reading profile data :\n\t", sys.exc_info()[0])
-                            print(self.format_exception(e))
-                            print(directory, " did not have scores generated.")
+                            self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                            self.logger.error(self.format_exception(e))
+                            self.logger.error(f"{directory} did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,line+"\n")
                             failures+=1
             else:
                 
                 try:
-                    c = Candidate.Candidate(singleCand,singleCand)
+                    c = Candidate(singleCand, singleCand, self.logger_name)
                 
                     if(genProfileData):
                         scores = c.calculateProfileScores(self.debug)
@@ -408,9 +408,9 @@ class DataProcessor(Utilities.Utilities):
                     successes+=1
                     
                 except Exception as e: # Catch *all* exceptions.
-                    print("Error reading profile data :\n\t", sys.exc_info()[0])
-                    print(self.format_exception(e))
-                    print(directory, " did not have scores generated.")
+                    self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                    self.logger.error(self.format_exception(e))
+                    self.logger.error(f"{directory} did not have scores generated.")
                     self.appendToFile(self.candidateErrorLog,singleCand+"\n")
                     failures+=1
         
@@ -422,10 +422,10 @@ class DataProcessor(Utilities.Utilities):
         
         self.appendToFile(outPath, outputText)
 
-        print("\nCandidates processed:\t", candidatesProcessed)
-        print("Successes:\t", successes)
-        print("Failures:\t", failures)
-        print("Execution time: ", str(end - start))
+        self.logger.info(f"Candidates processed:\t{candidatesProcessed}")
+        self.logger.info(f"Successes:\t{successes}")
+        self.logger.info(f"Failures:\t{failures}")
+        self.logger.info(f"Execution time: {str(end - start)}")
 
     # ****************************************************************************************************
                         
@@ -457,7 +457,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print("User has not provided a search directory - searching local directory")
+            self.logger.info("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -472,18 +472,18 @@ class DataProcessor(Utilities.Utilities):
                         
                         candidatesProcessed+=1
                         
-                        #print "Processing candidate:\t" , cand
+                        # self.logger.info(f"Processing candidate:\t {cand}")
                         
                         try:
                             
-                            c = Candidate.Candidate(cand,str(directory+cand))
+                            c = Candidate(cand, str(directory+cand), self.logger_name)
                             scores = c.calculateScores(self.debug)
                             self.outputScores(scores,cand)
                                 
                         except Exception as e: # Catch *all* exceptions.
-                            print("Error processing candidates :\n\t", sys.exc_info()[0])
-                            print(self.format_exception(e))
-                            print(cand, " did not have scores generated.")
+                            self.logger.error("Error processing candidates :\n\t", sys.exc_info()[0])
+                            self.logger.error(self.format_exception(e))
+                            self.logger.error(f"{cand} did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -492,28 +492,28 @@ class DataProcessor(Utilities.Utilities):
         else:
             # Added to allow code to deal with a single candidate
             singleCand = directory   
-            #print "Processing candidate:\t" , singleCand
+            # self.logger.info(f"Processing candidate:\t {singleCand}")
             candidatesProcessed+=1
             try:
                 
-                c = Candidate.Candidate(singleCand,singleCand)
+                c = Candidate(singleCand, singleCand, self.logger_name)
                 scores = c.calculateScores(self.debug)
                 self.outputScores(scores,singleCand)
                 successes+=1
                     
             except Exception as e: # Catch *all* exceptions.
-                print("Error processing candidates :\n\t", sys.exc_info()[0])
-                print(self.format_exception(e))
-                print(singleCand, " did not have scores generated.")
+                self.logger.error("Error processing candidates :\n\t", sys.exc_info()[0])
+                self.logger.error(self.format_exception(e))
+                self.logger.error(f"{singleCand} did not have scores generated.")
                 self.appendToFile(self.candidateErrorLog,directory+"\n")
                 failures+=1
         
         end = datetime.datetime.now()
 
-        print("\nCandidates processed:\t", candidatesProcessed)
-        print("Successes:\t", successes)
-        print("Failures:\t", failures)
-        print("Execution time: ", str(end - start))
+        self.logger.info(f"Candidates processed:\t{candidatesProcessed}")
+        self.logger.info(f"Successes:\t{successes}")
+        self.logger.info(f"Failures:\t{failures}")
+        self.logger.info(f"Execution time: {str(end - start)}")
 
     # ****************************************************************************************************
     
@@ -541,7 +541,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print("User has not provided a search directory - searching local directory")
+            self.logger.info("User has not provided a search directory - searching local directory")
         
         metaFile = directory + "/Cands.meta"
         scoresFile = directory + "/Scores.csv"
@@ -566,13 +566,13 @@ class DataProcessor(Utilities.Utilities):
                     
                     candidatesProcessed+=1
                     
-                    #print "Processing candidate:\t" , cand
+                    # self.logger.info(f"Processing candidate:\t {cand}")
                     
                     try:
                         
                         # Get scores.
                         label = "0"
-                        c = Candidate.Candidate(cand,str(directory+cand))
+                        c = Candidate(cand, str(directory+cand), self.logger_name)
                         twenty_two_scores = array(c.calculateScores(self.debug))
                         profileData = array(c.calculateProfileScores(self.debug))
                         #subbandData = array(c.getSubbandData(self.debug))
@@ -636,9 +636,9 @@ class DataProcessor(Utilities.Utilities):
                         
                         self.appendToFile(metaFile,cand+","+str(label)+"\n")
                     except Exception as e: # Catch *all* exceptions.
-                        print("Error reading profile data :\n\t", sys.exc_info()[0])
-                        print(self.format_exception(e))
-                        print(cand, " did not have scores generated.")
+                        self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                        self.logger.error(self.format_exception(e))
+                        self.logger.error(f"{cand} did not have scores generated.")
                         self.appendToFile(self.candidateErrorLog,cand+"\n")
                         failures+=1
                         continue
@@ -647,12 +647,12 @@ class DataProcessor(Utilities.Utilities):
         
         end = datetime.datetime.now()
         
-        print("\nCandidates processed:\t", candidatesProcessed)
-        print("Successes:\t", successes)
-        print("Failures:\t", failures)
-        print("Positive:\t", self.positive)
-        print("Negative:\t", self.negative)
-        print("Execution time: ", str(end - start))
+        self.logger.info(f"Candidates processed:\t{candidatesProcessed}")
+        self.logger.info(f"Successes:\t{successes}")
+        self.logger.info(f"Failures:\t{failures}")
+        self.logger.info(f"Positive:\t{self.positive}")
+        self.logger.info(f"Negative:\t{self.negative}")
+        self.logger.info(f"Execution time: {str(end - start)}")
 
     # ******************************************************************************************
     
@@ -688,7 +688,7 @@ class DataProcessor(Utilities.Utilities):
         # If user has provided no directory.
         if(directory ==""):
             directory=os.path.dirname(os.path.realpath(__file__))
-            print("User has not provided a search directory - searching local directory")
+            self.logger.info("User has not provided a search directory - searching local directory")
         
         start = datetime.datetime.now()
         
@@ -702,7 +702,7 @@ class DataProcessor(Utilities.Utilities):
                         candidatesProcessed+=1
                         
                         try:
-                            c = Candidate.Candidate(cand,str(directory+cand))
+                            c = Candidate(cand, str(directory+cand), self.logger_name)
                             
                             profileStats = array(c.calculateProfileStatScores(self.debug))
                             DMCurveStats = array(c.calculateDMCurveStatScores(self.debug))
@@ -714,9 +714,9 @@ class DataProcessor(Utilities.Utilities):
                                 self.storeScore(cand, scores, outPath)
                             
                         except Exception as e: # Catch *all* exceptions.
-                            print("Error reading profile data :\n\t", sys.exc_info()[0])
-                            print(self.format_exception(e))
-                            print(cand, " did not have scores generated.")
+                            self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                            self.logger.error(self.format_exception(e))
+                            self.logger.error(f"{cand} did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,cand+"\n")
                             failures+=1
                             continue
@@ -725,14 +725,14 @@ class DataProcessor(Utilities.Utilities):
         else:
             singleCand = directory
             # Added to allow code to deal with a single candidate     
-            #print "Processing candidate:\t" , singleCand
+            # self.logger.info(f"Processing candidate:\t {singleCand}")
             candidatesProcessed+=1
             
             # If we have a file containing paths to candidates.
             if(".txt" not in singleCand):
                 
                 try:
-                    c = Candidate.Candidate(singleCand,singleCand)
+                    c = Candidate(singleCand, singleCand, self.logger_name)
                     
                     profileStats = array(c.calculateProfileStatScores(self.debug))
                     DMCurveStats = array(c.calculateDMCurveStatScores(self.debug))
@@ -756,9 +756,9 @@ class DataProcessor(Utilities.Utilities):
                     successes+=1
                         
                 except Exception as e: # Catch *all* exceptions.
-                    print("Error reading profile data :\n\t", sys.exc_info()[0])
-                    print(self.format_exception(e))
-                    print(directory, " did not have scores generated.")
+                    self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                    self.logger.error(self.format_exception(e))
+                    self.logger.error(f"{directory} did not have scores generated.")
                     self.appendToFile(self.candidateErrorLog,singleCand+"\n")
                     failures+=1
             else:
@@ -772,7 +772,7 @@ class DataProcessor(Utilities.Utilities):
                     for line in lines:
                         
                         try:
-                            c = Candidate.Candidate(line,line)
+                            c = Candidate(line, line, self.logger_name)
                             
                             profileStats = array(c.calculateProfileStatScores(self.debug))
                             DMCurveStats = array(c.calculateDMCurveStatScores(self.debug))
@@ -796,9 +796,9 @@ class DataProcessor(Utilities.Utilities):
                             successes+=1
                                 
                         except Exception as e: # Catch *all* exceptions.
-                            print("Error reading profile data :\n\t", sys.exc_info()[0])
-                            print(self.format_exception(e))
-                            print(directory, " did not have scores generated.")
+                            self.logger.error("Error reading profile data :\n\t", sys.exc_info()[0])
+                            self.logger.error(self.format_exception(e))
+                            self.logger.error(f"{directory} did not have scores generated.")
                             self.appendToFile(self.candidateErrorLog,line+"\n")
                             failures+=1
                 
@@ -811,9 +811,9 @@ class DataProcessor(Utilities.Utilities):
         
         self.appendToFile(outPath, outputText)
 
-        print("\nCandidates processed:\t", candidatesProcessed)
-        print("Successes:\t", successes)
-        print("Failures:\t", failures)
-        print("Execution time: ", str(end - start))
+        self.logger.info(f"Candidates processed: {candidatesProcessed}")
+        self.logger.info(f"Successes: {successes}")
+        self.logger.info(f"Failures: {failures}")
+        self.logger.info(f"Execution time: {str(end - start)}")
 
     # ******************************************************************************************

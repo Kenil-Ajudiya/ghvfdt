@@ -13,8 +13,7 @@ Rob Lyon <robert.lyon@cs.man.ac.uk>
  Revision:1    Rob Lyon    Initial version of code.                            06/02/2014 
 """
 
-# Standard library Imports:
-import struct, sys, numbers
+import struct, sys, numbers, logging
 import numpy as np
 from scipy.special import i0
 from scipy.optimize import leastsq
@@ -22,7 +21,6 @@ from scipy.stats import skew
 from scipy.stats import kurtosis
 import matplotlib.pyplot as plt # Revision:1
 
-# Custom file Imports:
 from ProfileOperations import ProfileOperations
 from Candidate import CandidateFileInterface
 
@@ -34,7 +32,7 @@ class PFDOperations(ProfileOperations):
     a pulsar candidate.
     """
     
-    def __init__(self,debugFlag):
+    def __init__(self, debugFlag: bool, logger_name: str):
         """
         Default constructor.
         
@@ -43,9 +41,10 @@ class PFDOperations(ProfileOperations):
         debugFlag     -    the debugging flag. If set to True, then detailed
                            debugging messages will be printed to the terminal
                            during execution.
+        logger_name   -    the name of the logger to be used for logging messages.
         """
-        ProfileOperations.__init__(self,debugFlag)
-
+        ProfileOperations.__init__(self, debugFlag, logger_name)
+        self.logger = logging.getLogger(logger_name)
     # ****************************************************************************************************
     #
     # Candidate parameters
@@ -128,24 +127,24 @@ class PFDOperations(ProfileOperations):
         # Determine the pulse width, assume that it can be gotten by finding extrema
         # of the Half maximum points. 
         peak = rot_profile.argmax()
-        #print "Peak:" + str(peak)
+        # self.logger.debug("Peak: %s", peak)
         halfmax_profile = max(rot_profile) / 2
         left_lim = peak
         while left_lim > 0:
-            #print rot_profile[left_lim], halfmax_profile
+            # self.logger.debug("%s %s", rot_profile[left_lim], halfmax_profile)
             if rot_profile[left_lim] < halfmax_profile:
                 break
             else:
                 left_lim -= 1
-        #print "LL:" + str(left_lim)
+        # self.logger.debug("LL: %s", left_lim)
         right_lim = peak
         while right_lim < len(rot_profile):
-            #print rot_profile[right_lim], halfmax_profile
+            # self.logger.debug("%s %s", rot_profile[right_lim], halfmax_profile)
             if rot_profile[right_lim] < halfmax_profile:
                 break
             else:
                 right_lim += 1
-        #print "RL:" + str(right_lim)
+        # self.logger.debug("RL: %s", right_lim)
         
         if(self.debug):
             plt.plot(xData,rot_profile,left_lim,rot_profile[left_lim], 'o',right_lim,rot_profile[right_lim],'o',peak,halfmax_profile,'o')
@@ -308,7 +307,7 @@ class PFDOperations(ProfileOperations):
         chi_fit  =  chi_fit/ndeg
         chi_theo = chi_theo/ndeg
         
-        #print "CHISQ: " + str(chi_fit) + " " + str(chi_theo)
+        # self.logger.debug("CHISQ: %s %s", chi_fit, chi_theo)
 
         diffBetweenFittingFactor = abs(1-plsq[0][1])
         diffBetweenBestAndOptimisedDM = plsq[0][2]
@@ -469,7 +468,7 @@ class PFDOperations(ProfileOperations):
         """
         zoomfact = int(zoomfact)
         if (zoomfact < 1):
-            #print "zoomfact must be >= 1."
+            # self.logger.warning("zoomfact must be >= 1.")
             return 0.0
         elif zoomfact==1:
             return data
@@ -490,8 +489,6 @@ class PFDOperations(ProfileOperations):
             win = _window_function[window](xs, len(data)/2)
         kernel = win * self.sinc(xs)
         
-        if (0):
-            print("would have plotted.")
         return np.fft.irfft(np.fft.rfft(kernel) * np.fft.rfft(comb))
     
     # ****************************************************************************************************
@@ -573,7 +570,7 @@ class PFD(CandidateFileInterface):
     Represents a PFD file.
     """
     
-    def __init__(self,debugFlag,candidateName):
+    def __init__(self, debugFlag: bool, candidateName: str, logger_name: str):
         """
         Default constructor.
         
@@ -584,12 +581,13 @@ class PFD(CandidateFileInterface):
                            during execution.
         candidateName -    the name for the candidate, typically the file path.
         """
-        CandidateFileInterface.__init__(self,debugFlag)
+        CandidateFileInterface.__init__(self, debugFlag, logger_name)
         self.cand = candidateName
         self.scores=[]
-        self.profileOps = PFDOperations(self.debug)
+        self.profileOps = PFDOperations(self.debug, logger_name)
         self.setNumberOfScores(22)
         self.load()
+        self.logger = logging.getLogger(logger_name)
 
     # ****************************************************************************************************
            
@@ -668,7 +666,6 @@ class PFD(CandidateFileInterface):
                         self.profs[ii,jj,:] = np.fromfile(infile, np.float64, self.proflen)
                     except Exception: # Catch *all* exceptions.
                         pass
-                        #print ""
         else:
             self.profs = np.asarray(struct.unpack(swapchar+"d"*self.numprofs*self.proflen,infile.read(self.numprofs*self.proflen*8)))
             self.profs = np.reshape(self.profs, (self.npart, self.nsub, self.proflen))
@@ -698,13 +695,11 @@ class PFD(CandidateFileInterface):
                         currentstats[jj] = np.fromfile(infile, np.float64, 7)
                     except Exception: # Catch *all* exceptions.
                         pass
-                        #print ""
                 else:
                     try:
                         currentstats[jj] = np.asarray(struct.unpack(swapchar+"d"*7,infile.read(7*8)))
                     except Exception: # Catch *all* exceptions.
                         pass
-                        #print ""
                     
             self.pts_per_fold.append(self.stats[ii][0][0])  # numdata from foldstats
             
@@ -733,7 +728,7 @@ class PFD(CandidateFileInterface):
             # If candidate file is invalid in some way...
             if(self.isValid()==False):
 
-                print("Invalid PFD candidate: ",self.cand)
+                self.logger.error("Invalid PFD candidate: %s", self.cand)
                 scores=[]
                 
                 # Return only NaN values for scores.
@@ -743,7 +738,7 @@ class PFD(CandidateFileInterface):
             
             # Candidate file is valid.
             else:
-                print("Candidate file valid.")
+                self.logger.info("Candidate file valid.")
                 self.profile = np.array(self.getprofile())
             
         # Just go directly to score generation without checks.
@@ -1008,13 +1003,13 @@ class PFD(CandidateFileInterface):
             # Add first scores.
             
             if(self.debug==True):
-                print("curve = ", curve)
+                self.logger.debug("curve = %s", curve)
 
             return curve
 
         except Exception as e: # catch *all* exceptions
-            print("Error getting DM curve data from PFD file\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error getting DM curve data from PFD file\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("DM curve extraction exception")
     
     def computeProfileStatScores(self):
@@ -1043,8 +1038,8 @@ class PFD(CandidateFileInterface):
             return stats
         
         except Exception as e: # catch *all* exceptions
-            print("Error getting Profile stat scores from PFD file\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error getting Profile stat scores from PFD file\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("Profile stat score extraction exception")
     
     def computeDMCurveStatScores(self):
@@ -1074,8 +1069,8 @@ class PFD(CandidateFileInterface):
             return stats  
         
         except Exception as e: # catch *all* exceptions
-            print("Error getting DM curve stat scores from PFD file\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error getting DM curve stat scores from PFD file\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("DM curve stat score extraction exception")
         
     # ****************************************************************************************************
@@ -1159,14 +1154,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(sin_fit[3])) # Score 4.  Sum over residuals.
             
             if(self.debug==True):
-                print("\nScore 1. Chi-Squared value for sine fit to raw profile = ",sin_fit[0])
-                print("Score 2. Chi-Squared value for sine-squared fit to amended profile = ",sin_fit[1])
-                print("Score 3. Difference between maxima = ",sin_fit[2])
-                print("Score 4. Sum over residuals = ",sin_fit[3])
+                self.logger.debug("Score 1. Chi-Squared value for sine fit to raw profile = %s", sin_fit[0])
+                self.logger.debug("Score 2. Chi-Squared value for sine-squared fit to amended profile = %s", sin_fit[1])
+                self.logger.debug("Score 3. Difference between maxima = %s", sin_fit[2])
+                self.logger.debug("Score 4. Sum over residuals = %s", sin_fit[3])
 
         except Exception as e: # catch *all* exceptions
-            print("Error computing scores 1-4 (Sinusoid Fitting) \n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error computing scores 1-4 (Sinusoid Fitting) \n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("Sinusoid fitting exception")
 
     # ****************************************************************************************************
@@ -1227,17 +1222,17 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(guassian_fit[6]))# Score 11. Chi squared value from double Gaussian fit to pulse profile.
             
             if(self.debug==True):
-                print("\nScore 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = ", guassian_fit[0])
-                print("Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = ",guassian_fit[1])
-                print("Score 7. Distance between expectation values of derivative histogram and profile histogram. = ",guassian_fit[2])
-                print("Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = ", guassian_fit[3])
-                print("Score 9. Chi squared value from Gaussian fit to pulse profile = ",guassian_fit[4])
-                print("Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = ", guassian_fit[5])
-                print("Score 11. Chi squared value from double Gaussian fit to pulse profile = ", guassian_fit[6])
+                self.logger.debug("Score 5. Distance between expectation values of Gaussian and fixed Gaussian fits to profile histogram = %s", guassian_fit[0])
+                self.logger.debug("Score 6. Ratio of the maximum values of Gaussian and fixed Gaussian fits to profile histogram = %s", guassian_fit[1])
+                self.logger.debug("Score 7. Distance between expectation values of derivative histogram and profile histogram. = %s", guassian_fit[2])
+                self.logger.debug("Score 8. Full-width-half-maximum (FWHM) of Gaussian fit to pulse profile = %s", guassian_fit[3])
+                self.logger.debug("Score 9. Chi squared value from Gaussian fit to pulse profile = %s", guassian_fit[4])
+                self.logger.debug("Score 10. Smallest FWHM of double-Gaussian fit to pulse profile = %s", guassian_fit[5])
+                self.logger.debug("Score 11. Chi squared value from double Gaussian fit to pulse profile = %s", guassian_fit[6])
 
         except Exception as e: # catch *all* exceptions
-            print("Error computing scores 5-11 (Gaussian Fitting) \n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error computing scores 5-11 (Gaussian Fitting) \n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("Gaussian fitting exception")
     
     # ****************************************************************************************************
@@ -1272,14 +1267,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(candidateParameters[3]))# Score 15. Best pulse width.
             
             if(self.debug==True):
-                print("\nScore 12. Best period = ", candidateParameters[0])
-                print("Score 13. Best S/N value = ", candidateParameters[1], " Filtered value = ", self.filterScore(13,float(candidateParameters[1])))
-                print("Score 14. Best DM value = ", candidateParameters[2], " Filtered value = ", self.filterScore(14,float(candidateParameters[2])))
-                print("Score 15. Best pulse width = ", candidateParameters[3])
+                self.logger.debug("Score 12. Best period = %s", candidateParameters[0])
+                self.logger.debug("Score 13. Best S/N value = %s Filtered value = %s", candidateParameters[1], self.filterScore(13,float(candidateParameters[1])))
+                self.logger.debug("Score 14. Best DM value = %s Filtered value = %s", candidateParameters[2], self.filterScore(14,float(candidateParameters[2])))
+                self.logger.debug("Score 15. Best pulse width = %s", candidateParameters[3])
 
         except Exception as e: # catch *all* exceptions
-            print("Error computing candidate parameters 12-15\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error computing candidate parameters 12-15\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("Candidate parameters exception")
     
     # ****************************************************************************************************
@@ -1316,14 +1311,14 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(DMCurveFitting[3]))# Score 19. Chi squared value from DM curve fit.
             
             if(self.debug==True):
-                print("\nScore 16. SNR / SQRT( (P-W) / W ) = ", DMCurveFitting[0])
-                print("Score 17. Difference between fitting factor, Prop, and 1 = ", DMCurveFitting[1])
-                print("Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = ", DMCurveFitting[2], " Filtered value = ", self.filterScore(18,float(DMCurveFitting[2])))
-                print("Score 19. Chi squared value from DM curve fit = ", DMCurveFitting[3])
+                self.logger.debug("Score 16. SNR / SQRT( (P-W) / W ) = %s", DMCurveFitting[0])
+                self.logger.debug("Score 17. Difference between fitting factor, Prop, and 1 = %s", DMCurveFitting[1])
+                self.logger.debug("Score 18. Difference between best DM value and optimised DM value from fit, mod(DMfit - DMbest) = %s Filtered value = %s", DMCurveFitting[2], self.filterScore(18,float(DMCurveFitting[2])))
+                self.logger.debug("Score 19. Chi squared value from DM curve fit = %s", DMCurveFitting[3])
 
         except Exception as e: # catch *all* exceptions
-            print("Error computing DM curve fitting 16-19\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error computing DM curve fitting 16-19\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("DM curve fitting exception")
     
     # ****************************************************************************************************
@@ -1356,13 +1351,13 @@ class PFD(CandidateFileInterface):
             self.scores.append(float(subbandScores[2]))# Score 22. Sum of correlation coefficients between sub-bands and profile.
             
             if(self.debug==True):
-                print("\nScore 20. RMS of peak positions in all sub-bands = ", subbandScores[0])
-                print("Score 21. Average correlation coefficient for each pair of sub-bands = ", subbandScores[1])
-                print("Score 22. Sum of correlation coefficients between sub-bands and profile = ", subbandScores[2])
+                self.logger.debug("Score 20. RMS of peak positions in all sub-bands = %s", subbandScores[0])
+                self.logger.debug("Score 21. Average correlation coefficient for each pair of sub-bands = %s", subbandScores[1])
+                self.logger.debug("Score 22. Sum of correlation coefficients between sub-bands and profile = %s", subbandScores[2])
 
         except Exception as e: # catch *all* exceptions
-            print("Error computing subband scores 20-22\n\t", sys.exc_info()[0])
-            print(self.format_exception(e))
+            self.logger.error("Error computing subband scores 20-22\n\t%s", sys.exc_info()[0])
+            self.logger.error(self.format_exception(e))
             raise Exception("Subband scoring exception")
     
     # ****************************************************************************************************

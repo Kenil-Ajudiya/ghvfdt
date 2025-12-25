@@ -13,9 +13,39 @@ By Rob Lyon <robert.lyon@cs.man.ac.uk>
 
 """
 
-# Python 2.4 imports.
 import traceback
-import sys, os
+import sys, os, logging
+
+class MultiColorFormatter(logging.Formatter):
+    LOG_LEVEL_NUM = 25
+    logging.addLevelName(LOG_LEVEL_NUM, "LOG")
+    # Define colors
+    COLORS = {
+        'DEBUG': '\033[95m',    # Bright Magenta
+        'INFO': '\033[96m',     # Bright Cyan
+        'LOG': '\033[92m',      # Bright Green
+        'WARNING': '\033[93m',  # Bright Yellow
+        'ERROR': '\033[91m',    # Bright Red
+        'CRITICAL': '\033[41m', # Red background
+    }
+    BOLD = '\033[1m'
+    RESET = '\033[0m'
+
+    def format(self, record):
+        if record.levelname == 'INFO':
+            color = self.COLORS[record.levelname]
+            dt = color + self.formatTime(record, "%Y-%m-%d %H:%M:%S")
+            lvl = record.levelname
+            msg = self.RESET + record.getMessage()
+        else:
+            color = self.BOLD + self.COLORS[record.levelname]
+            dt = color + self.formatTime(record, "%Y-%m-%d %H:%M:%S")
+            lvl = record.levelname
+            msg = record.getMessage() + self.RESET
+
+        return f"{dt} # {lvl} # {msg}"
+
+# **********************************************************************************************
 
 class Utilities(object):
     """
@@ -25,8 +55,9 @@ class Utilities(object):
     
     # ******************************************************************************************
 
-    def __init__(self,debugFlag):
+    def __init__(self, debugFlag: bool, logger_name: str):
         self.debug = debugFlag
+        self.logger = logging.getLogger(logger_name)
     
     def appendToFile(self,path,text):
         """
@@ -113,7 +144,7 @@ class Utilities(object):
     
     # ******************************************************************************************
     
-    def out(self,message,parameter):
+    def out(self, message, parameter):
         """
         Writes a debug statement out if the debug flag is set to true.
         
@@ -126,11 +157,11 @@ class Utilities(object):
         """
         
         if(self.debug):
-            print(message , parameter)
+            self.logger.debug("%s %s", message, parameter)
             
     # ******************************************************************************************
     
-    def outMutiple(self,parameters):
+    def outMutiple(self, parameters):
         """
         Writes a debug statement out if the debug flag is set to true.
         
@@ -147,6 +178,6 @@ class Utilities(object):
             for p in parameters:
                 output+=str(p)
 
-            print(output)
+            self.logger.debug(output)
 
     # ******************************************************************************************
