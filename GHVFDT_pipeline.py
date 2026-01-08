@@ -3,6 +3,7 @@ from pandas import read_csv
 import psrchive
 import subprocess
 import logging
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from cyclopts import App, Parameter
 from typing import Annotated
@@ -13,6 +14,13 @@ from CandidateScoreGenerators.Utilities import MultiColorFormatter
 app = App("GH-VFDT Pipeline",
           help="A pipeline to classify and filter pulsar candidates using GH-VFDT and various filters.",
           version="1.0")
+
+def _render_hdf5_png(hdf5_file: Path):
+    logger = logging.getLogger("ML_classifier")
+    logger.info(f"Generating PNG for candidate {hdf5_file}")
+    img_file = hdf5_file.with_suffix(".png")
+    candPlotObj = CandidatePlot(Candidate.load_hdf5(hdf5_file), figsize=(16, 5), dpi=80)
+    candPlotObj.saveimg(img_file)
 
 def prep_data_dir(cand_csv: Path, all_cands_dir: Path) -> (Path | str):
     """
@@ -54,7 +62,7 @@ def prep_data_dir(cand_csv: Path, all_cands_dir: Path) -> (Path | str):
         i += 1
     return filtered_candies_dir, file_type
 
-def make_PDF(files, output_pdf=Path("Positive_Candidates.pdf"), file_type="hdf5"):
+def make_PDF(files, output_pdf=Path("Positive_Candidates.pdf"), file_type="hdf5", njobs=None):
     """
     Make a single, multi-page PDF document of the candidate files.
 
@@ -70,14 +78,13 @@ def make_PDF(files, output_pdf=Path("Positive_Candidates.pdf"), file_type="hdf5"
     """
 
     files = [Path(file) for file in files]
-    img_files: list[Path] = [output_pdf.parent / (file.name + ".png") for file in files]
+    img_files: list[Path] = [file.with_suffix(".png") for file in files]
 
     logger = logging.getLogger("ML_classifier")
     if file_type == "hdf5":
-        for i in range(len(files)):
-            logger.info(f"Generating PNG for candidate {files[i]}")
-            candPlotObj = CandidatePlot(Candidate.load_hdf5(files[i]), figsize=(16, 5), dpi=80)
-            candPlotObj.saveimg(img_files[i])
+        with Pool(processes=njobs or cpu_count()) as pool:
+            for _ in pool.imap_unordered(_render_hdf5_png, files):
+                pass
     else:
         for pfd in files:
             logger.info(f"Generating PostScript for {pfd}")
@@ -105,13 +112,6 @@ def make_PDF(files, output_pdf=Path("Positive_Candidates.pdf"), file_type="hdf5"
 
     if file_type == "pfd":
         subprocess.run("rm -r *.pfd*", shell=True)
-    else:
-        for img_file in img_files:
-            try:
-                img_file.unlink()
-                logger.debug(f"Removed temporary image {img_file}")
-            except Exception as e:
-                logger.warning(f"Failed to remove temporary image {img_file}: {e}")
 
 def nosigbins(tp): # Finding the off pulse region using mean/rms ratio
 	bins=tp.shape[1]
@@ -216,6 +216,7 @@ def main(
     fp_null: Annotated[bool, Parameter(name=["--fp-null", "-fp"], help="Apply filter for nulling in frequency profile")] = False,
     tp_null: Annotated[bool, Parameter(name=["--tp-null", "-tp"], help="Apply filter for nulling in time profile")] = False,
     schan: Annotated[bool, Parameter(name=["--schan", "-sc"], help="Apply filter for strong channel removal")] = False,
+    njobs: Annotated[int | None, Parameter(name=["--njobs", "-j"], help="Number of parallel jobs to use for PDF generation. Defaults to number of CPU cores.")] = None,
 ):
     """
     Run GH-VFDT pipeline.
@@ -278,10 +279,10 @@ def main(
     if file_type == "hdf5":
         pass
         logger.info(f"Creating PDF for {len(files)} positive hdf5 candidates")
-        make_PDF(files, output_pdf, file_type)
+        make_PDF(files, output_pdf, file_type, njobs)
     else:
         logger.info(f"Creating PDF for {len(files)} positive pfd candidates")
-        make_PDF(files, output_pdf, file_type)
+        make_PDF(files, output_pdf, file_type, njobs)
 
         # Apply filters if selected.
         if (fp_null or tp_null or schan):
@@ -328,7 +329,7 @@ def main(
                                 filtered.append(i)
 
             logger.info(f"Filtered {len(filtered)} candidates after applying selected filters")
-            make_PDF(filtered, f"{output_pdf.parent}/{output_pdf.stem}_Filtered.pdf", file_type)
+            make_PDF(filtered, f"{output_pdf.parent}/{output_pdf.stem}_Filtered.pdf", file_type, njobs)
 
     if cand_csv: # it was a temporary data directory.
         subprocess.run(f"rm -r {data_dir}", shell=True)
