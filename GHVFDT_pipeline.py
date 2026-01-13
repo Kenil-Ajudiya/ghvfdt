@@ -5,6 +5,7 @@ import subprocess
 import logging
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
+from glob import glob
 from cyclopts import App, Parameter
 from typing import Annotated
 from PIL import Image
@@ -54,10 +55,8 @@ def prep_data_dir(cand_csv: Path, all_cands_dir: Path) -> (Path | str):
         raise ValueError(f"Invalid file suffix {suffix}. It should either either be '.h5' or '.pfd'.")
 
     i = 0
-    filtered_cands = []
     for cand_file in filtered_candies["fname"]:
-        cand = (all_cands_dir / f"BM{filtered_candies['beam'][i]}.down_RFI_Mitigated_01/candidates") / cand_file
-        filtered_cands.append(cand)
+        cand = glob(str((all_cands_dir / f"BM{filtered_candies['beam'][i]}*/candidates") / cand_file))[0]
         subprocess.run(f"cp {cand} {filtered_candies_dir}/BM{filtered_candies['beam'][i]}_{cand_file}", shell=True)
         i += 1
     return filtered_candies_dir, file_type
